@@ -1,0 +1,16 @@
+2024-12-18 14:41:16 0 [Note] Reading of all Master_info entries succeeded
+2024-12-18 14:41:16 0 [Note] Added new Master_info '' to hash table
+2024-12-18 14:41:16 0 [Note] c:\xampp\mysql\bin\mysqld.exe: ready for connections.
+Version: '10.4.28-MariaDB'  socket: ''  port: 3306  mariadb.org binary distribution
+2024-12-19  7:36:41 0 [ERROR] mysqld.exe: Error writing file 'C:\xampp\mysql\data\aria_log_control' (Errcode: 22 "Invalid argument")
+2024-12-19  7:36:41 0 [ERROR] mysqld.exe: Aria engine: checkpoint failed
+2024-12-20  2:32:44 0 [ERROR] mysqld.exe: Error writing file 'C:\xampp\mysql\data\aria_log_control' (Errcode: 22 "Invalid argument")
+2024-12-20  2:32:44 0 [ERROR] mysqld.exe: Aria engine: checkpoint failed
+2024-12-20  2:54:44 0 [ERROR] mysqld.exe: Error writing file 'C:\xampp\mysql\data\aria_log_control' (Errcode: 22 "Invalid argument")
+2024-12-20  2:54:44 0 [ERROR] mysqld.exe: Aria engine: checkpoint failed
+2024-12-20  8:55:50 0 [ERROR] mysqld.exe: Error writing file 'C:\xampp\mysql\data\aria_log_control' (Errcode: 22 "Invalid argument")
+2024-12-20  8:55:50 0 [ERROR] mysqld.exe: Aria engine: checkpoint failed
+2024-12-20  9:30:21 0 [ERROR] mysqld.exe: Error writing file 'C:\xampp\mysql\data\aria_log_control' (Errcode: 22 "Invalid argument")
+2024-12-20  9:30:21 0 [ERROR] mysqld.exe: Aria engine: checkpoint failed
+2024-12-21  2:22:03 0 [ERROR] mysqld.exe: Error writing file 'C:\xampp\mysql\data\aria_log_control' (Errcode: 22 "Invalid argument")
+2024-12-21  2:22:03 0 [ERROR] mysqld.exe: Aria engine: checkpoint failed
