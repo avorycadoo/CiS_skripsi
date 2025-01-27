@@ -6,6 +6,7 @@ use App\Models\Payment_Methods;
 use App\Models\Product;
 use App\Models\purchase;
 use App\Models\Suppliers;
+use App\Models\Warehouse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -17,7 +18,7 @@ class PurchaseController extends Controller
      */
     public function index()
     {
-        $purchases = purchase::with(['supplier', 'paymentMethod'])->get(); // Eager load suppliers and payment methods
+        $purchases = purchase::with(['supplier', 'paymentMethod', 'warehouse'])->get(); // Eager load suppliers and payment methods
         return view('purchase.index', ['datas' => $purchases]);
     }
 
@@ -34,13 +35,17 @@ class PurchaseController extends Controller
         $suppliers = Suppliers::all();
         $paymentMethods = Payment_Methods::all();
         $products = Product::all();
-
+        $warehouses = Warehouse::all();
+        $activeWarehouses = DB::table('detailkonfigurasi')
+            ->where('konfigurasi_id', 6)
+            ->where('statusActive', 1)
+            ->get();
         $activeShippings = DB::table('detailkonfigurasi')
             ->where('konfigurasi_id', 4)
             ->where('statusActive', 1)
             ->get();
 
-        return view('purchase.create', compact('newNumber', 'suppliers', 'paymentMethods', 'products', 'activeShippings'));
+        return view('purchase.create', compact('newNumber', 'suppliers', 'paymentMethods', 'warehouses', 'products', 'activeWarehouses', 'activeShippings'));
     }
 
     public function detail($id)
@@ -141,7 +146,12 @@ class PurchaseController extends Controller
     {
         // Generate invoice number
         $noNota = 'PUR' . str_pad(DB::table('purchase')->max('id') + 1, 4, '0', STR_PAD_LEFT);
-
+        
+        // Determine warehouse_id based on selected option  
+        $warehouseId = null;
+        if ($request->input('warehouse_option') === 'multi') {
+            $warehouseId = $request->input('warehouse_id');
+        }
         // Insert into purchase table
         $purchaseId = DB::table('purchase')->insertGetId([
             'noNota' => $noNota,
@@ -151,6 +161,7 @@ class PurchaseController extends Controller
             'shipping_cost' => $request->input('shipping_cost', 0),
             'payment_methods_id' => $request->input('payment_methods_id'),
             'suppliers_id' => $request->input('supplier_id'),
+            'warehouse_id' => $warehouseId,  
         ]);
 
         $products = json_decode($request->input('products'), true);

@@ -44,6 +44,8 @@
                 </table>
 
                 <div class="text-center mt-4">
+                    <a href="{{ route('pos.print', ['id' => $sale->id]) }}" target="_blank" class="btn btn-primary">Print
+                        Receipt</a>
                     <a href="{{ route('sales.index') }}" class="btn btn-info">Back to Transactions</a>
                 </div>
             </div>

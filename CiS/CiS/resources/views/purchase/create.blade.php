@@ -143,6 +143,57 @@
                         </select>
                     </div>
 
+                    <div class="form-group">
+                        <label for="warehouse_selection">Select Warehouse Option:</label><br>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="warehouse_option" id="multiWarehouse"
+                                value="multi" checked>
+                            <label class="form-check-label" for="multiWarehouse">Multi-warehouse</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="warehouse_option" id="directlyInStore"
+                                value="direct">
+                            <label class="form-check-label" for="directlyInStore">Directly in store</label>
+                        </div>
+                    </div>
+
+                    <div id="warehouseDropdown" class="form-group mt-3">
+                        <label for="warehouse_id">Select Warehouse:</label>
+                        <select class="form-control" name="warehouse_id" id="warehouse_id>
+                            <option value="" disabled selected>Select Your Warehouse</option>
+                            @foreach ($warehouses as $warehouse)
+                                <option value="{{ $warehouse->id }}">{{ $warehouse->name }}</option>
+                            @endforeach
+                        </select>
+                        <small id="warehouseHelp" class="form-text text-muted">Please select a warehouse if
+                            Multi-warehouse is selected.</small>
+                    </div>
+
+                    {{-- @if ($activeWarehouses->isNotEmpty())
+                        <div class="form-group">
+                            <label for="warehouse_id">Warehouse</label>
+                            <select class="form-control" name="warehouse_id" required>
+                                <option value="">Select Warehouse</option>
+                                @foreach ($activeWarehouses as $activeWarehouse)
+                                    <option value="{{ $activeWarehouse->id }}">{{ $activeWarehouse->name }}</option>
+                                @endforeach
+                            </select>
+                            <small id="paymentMethodHelp" class="form-text text-muted">Please select a warehouse</small>
+                        </div>
+                    @else
+                        <p>No active Warehouse available.</p>
+                    @endif --}}
+                    {{-- <div class="form-group">
+                        <label for="warehouse_id">Select Warehouse</label>
+                        <select class="form-control" name="warehouse_id" required>
+                            <option value="" disabled selected>Select Your Warehouse</option>
+                            @foreach ($warehouses as $warehouse)
+                                <option value="{{ $warehouse->id }}">{{ $warehouse->name }}</option>
+                            @endforeach
+                        </select>
+                        <small class="form-text text-muted">Choose a warehouse to store your product purchases.</small>
+                    </div> --}}
+
                     <div class="d-flex justify-content-end mt-4">
                         <a class="btn btn-info me-2" href="{{ url()->previous() }}">Cancel</a>
                         <button type="submit" class="btn btn-primary">Submit</button>
@@ -167,6 +218,21 @@
         document.addEventListener('DOMContentLoaded', function() {
             const products = []; // Initialize an array to hold products
             const productsInput = document.getElementById('productsInput');
+            const multiWarehouseRadio = document.getElementById('multiWarehouse');
+            const directlyInStoreRadio = document.getElementById('directlyInStore');
+            const warehouseDropdown = document.getElementById('warehouseDropdown');
+            
+            // Show/hide warehouse dropdown based on selected option  
+            multiWarehouseRadio.addEventListener('change', function() {
+                warehouseDropdown.style.display = 'block';
+            });
+
+            directlyInStoreRadio.addEventListener('change', function() {
+                warehouseDropdown.style.display = 'none';
+            });
+
+            // Initialize dropdown visibility  
+            warehouseDropdown.style.display = multiWarehouseRadio.checked ? 'block' : 'none';
 
             function addProduct() {
                 const productSelect = document.getElementById('product_id');
@@ -259,15 +325,15 @@
 
             // Attach the addProduct function to the button click event
             document.getElementById('addProduct').addEventListener('click', addProduct);
-           
+
             // Toggle shipping section visibility
             document.getElementById('addShippingBtn').addEventListener('click', function() {
                 const shippingSection = document.getElementById('shippingSection');
                 shippingSection.style.display = shippingSection.style.display === 'none' ? 'block' : 'none';
             });
 
-             // Update total price when shipping input changes
-             document.getElementById('shipping_cost').addEventListener('input', updateTotalPrice);
+            // Update total price when shipping input changes
+            document.getElementById('shipping_cost').addEventListener('input', updateTotalPrice);
         });
     </script>
 @endsection

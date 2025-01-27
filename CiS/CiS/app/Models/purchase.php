@@ -27,4 +27,9 @@ class purchase extends Model
     {
         return $this->belongsTo(Suppliers::class, 'suppliers_id', 'id'); // Each purchase belongs to one supplier
     }
+
+    public function warehouse()  
+    {  
+        return $this->belongsTo(Warehouse::class, 'warehouse_id', 'id'); // Each purchase belongs to one warehouse  
+    } 
 }

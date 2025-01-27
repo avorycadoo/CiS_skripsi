@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Warehouse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class WarehouseController extends Controller
 {
@@ -15,14 +16,52 @@ class WarehouseController extends Controller
         $querybuilder = Warehouse::all(); // ini untuk pake model
         return view('warehouse.index', ['data' => $querybuilder]);
     }
+    public function dataKonfigurasi()
+    {
+        // Ambil semua discount yang belum aktif dari detailkonfigurasi
+        $warehouses = DB::table('detailkonfigurasi')->where('konfigurasi_id', 6)->get();
+        
 
+        // Debugging line to check discounts
+        // dd($discounts);
+
+        return view('warehouse.konfigurasi', compact('warehouses'));
+    }
+
+    public function updateConfiguration(Request $request)
+    {
+        // Update warehouses
+        if ($request->has('warehouses')) {
+            $allWarehouses = DB::table('detailkonfigurasi')->where('konfigurasi_id', 6)->get();
+
+            // If discounts are selected, update their status
+            foreach ($allWarehouses as $warehouse) {
+                if ($request->has('warehouses') && in_array($warehouse->id, $request->input('warehouses', []))) {
+                    DB::table('detailkonfigurasi')
+                        ->where('id', $warehouse->id)
+                        ->update(['statusActive' => 1]);
+                } else {
+                    DB::table('detailkonfigurasi')
+                        ->where('id', $warehouse->id)
+                        ->update(['statusActive' => 0]);
+                }
+            }
+        } else {
+            // Jika tidak ada gudang yang dipilih, reset semua status menjadi 0
+            DB::table('detailkonfigurasi')->where('konfigurasi_id', 6)
+                ->where('types', '!=', 'mandatory') // Hanya reset yang bukan mandatory
+                ->update(['statusActive' => 0]);
+        }
+
+        return redirect()->route("warehouse.konfigurasi")->with('status', "Horray, Your konfigurasi data has been updated");
+    }
     /**
      * Show the form for creating a new resource.
      */
     public function create()
     {
         return view('warehouse.create');
-        
+
     }
 
     /**
@@ -63,19 +102,19 @@ class WarehouseController extends Controller
      */
     public function update(Request $request, string $id)
     {
-         // Temukan data berdasarkan ID
-         $updatedData = Warehouse::find($id);
+        // Temukan data berdasarkan ID
+        $updatedData = Warehouse::find($id);
 
-         // Pastikan data ditemukan sebelum melakukan update
-         if ($updatedData) {
-             $updatedData->name = $request->name;
-             $updatedData->address = $request->address;
-             $updatedData->save();
- 
-             return redirect()->route("warehouse.index")->with('status', "Horray, Your warehouse data is already updated");
-         } else {
-             return redirect()->route("warehouse.index")->with('status', "Failed to update data, warehouse not found.");
-         }
+        // Pastikan data ditemukan sebelum melakukan update
+        if ($updatedData) {
+            $updatedData->name = $request->name;
+            $updatedData->address = $request->address;
+            $updatedData->save();
+
+            return redirect()->route("warehouse.index")->with('status', "Horray, Your warehouse data is already updated");
+        } else {
+            return redirect()->route("warehouse.index")->with('status', "Failed to update data, warehouse not found.");
+        }
     }
 
     /**

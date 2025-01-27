@@ -11,8 +11,10 @@ class Customer extends Model
     use HasFactory;
     use SoftDeletes;
 
+    protected $guarded = ['id'];
+
     protected $attributes = [
-        'status_active' => 1, // Default active when a new customer is created
+        'status_active' => 1,
     ];
 
     public $timestamps = false;

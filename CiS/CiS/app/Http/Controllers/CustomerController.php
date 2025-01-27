@@ -17,7 +17,7 @@ class CustomerController extends Controller
     }
 
     /**
-     * 
+     *
      * Show the form for creating a new resource.
      */
     public function create()
@@ -31,14 +31,35 @@ class CustomerController extends Controller
     public function store(Request $request)
     {
         $data = new Customer();
-        $data->name= $request->get('cust_name');
-        $data->address= $request->get('cust_address');
-        $data->phone_number= $request->get('cust_phone');
-        $data->email= $request->get('cust_email');
+        $data->name = $request->get('cust_name');
+        $data->address = $request->get('cust_address');
+        $data->phone_number = $request->get('cust_phone');
+        $data->email = $request->get('cust_email');
         $data->save();
         // dd($data);
 
-        return redirect()->route("customer.index")->with('status',"Horray, Your new category data is already inserted");
+        return redirect()->route("customer.index")->with('status', "Horray, Your new category data is already inserted");
+    }
+
+
+    public function storeNew(Request $request)
+    {
+        $validated = $request->validate(
+            [
+                'name' => 'required',
+                'address' => 'required',
+                'phone_number' => 'required',
+                'email' => 'required'
+            ]
+        );
+
+
+        $validated['status_active'] = true;
+
+
+        Customer::create($validated);
+
+        return redirect()->back()->with('success', 'Berhasil menambahkan customer baru!');
     }
 
     /**
@@ -55,7 +76,7 @@ class CustomerController extends Controller
     public function edit(string $id)
     {
         $data = Customer::find($id);
-        return view("customer.edit",compact('data'));
+        return view("customer.edit", compact('data'));
     }
 
     public function getEditForm(Request $request)
@@ -84,9 +105,9 @@ class CustomerController extends Controller
         $updatedData->phone_number = $request->phone_number;
         $updatedData->email = $request->email;
 
-        
+
         $updatedData->save();
-        
+
 
         return redirect()->route("customer.index")->with('status', "Horray, Your customer data is already updated");
     }
@@ -101,8 +122,7 @@ class CustomerController extends Controller
             $deletedData = $customer;
             $deletedData->delete();
             return redirect()->route('customer.index')->with('status', 'Horray ! Your data is successfully deleted !');
-        } 
-        catch (\PDOException $ex) {
+        } catch (\PDOException $ex) {
             // Failed to delete data, then show exception message
             $msg = "Failed to delete data ! Make sure there is no related data before deleting it";
             return redirect()->route('customer.index')->with('status', $msg);

@@ -12,6 +12,8 @@ class Sales_detail extends Model
     use SoftDeletes;
     protected $table = 'sales_detail';
 
+    protected $guarded = ['id'];
+
 
     public function sales()
     {

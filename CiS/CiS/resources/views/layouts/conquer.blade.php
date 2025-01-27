@@ -7,6 +7,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <meta name="description" content="">
     <meta name="author" content="">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+
+
 
     <title>Electronics Configurations App</title>
 
@@ -28,7 +32,8 @@
     <div id="wrapper">
 
         <!-- Sidebar -->
-        <ul style="background: rgb(70, 5, 5); padding-top: 20px;" class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+        <ul style="background: rgb(70, 5, 5); padding-top: 20px;"
+            class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
             <!-- Sidebar - Brand -->
             <a class="sidebar-brand d-flex align-items-center justify-content-center" href="index.html">
                 <div class="sidebar-brand-icon rotate-n-15">
@@ -36,6 +41,13 @@
                 </div>
                 <div class="sidebar-brand-text mx-3">Electronics Configurations App</div>
             </a>
+
+            <li class="nav-item">
+                <a class="nav-link" href="{{ route('pos.index') }}">
+                    <i class="fas fa-fw fa-cart-plus"></i>
+                    <span>POS Cashier</span>
+                </a>
+            </li>
 
             <!-- Divider -->
             <hr class="sidebar-divider my-0">
@@ -124,6 +136,11 @@
                             <i class="fas fa-fw fa-users"></i>
                             <span>Suppliers</span>
                         </a>
+
+                        <a class="collapse-item" href="{{ route('warehouse.konfigurasi') }}">  
+                            <i class="fas fa-fw fa-receipt"></i>  
+                            <span>Warehouse Configurations</span>  
+                        </a>  
                     </div>
                 </div>
             </li>
@@ -154,6 +171,14 @@
 
             <!-- Divider -->
             <hr class="sidebar-divider">
+
+
+            <div class="text-center mb-2">
+                <form action="{{ route('logout', ['id' => 1]) }}" method="post">
+                    @csrf
+                    <button type="submit" class="btn btn-danger">Logout</button>
+                </form>
+            </div>
 
             <!-- Sidebar Toggler (Sidebar) -->
             <div class="text-center d-none d-md-inline">
@@ -274,6 +299,8 @@
             </div>
         </div>
 
+
+
         <!-- Bootstrap core JavaScript-->
         <script src="{{ asset('conquer/vendor/jquery/jquery.min.js') }}"></script>
         <script src="{{ asset('conquer/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
@@ -290,6 +317,57 @@
         <!-- Page level custom scripts -->
         <script src="{{ asset('conquer/js/demo/chart-area-demo.js') }}"></script>
         <script src="{{ asset('conquer/js/demo/chart-pie-demo.js') }}"></script>
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+
+        @if (session('success'))
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        text: '{{ session('success') }}',
+                        confirmButtonColor: '#3085d6',
+                        confirmButtonText: 'OK'
+                    });
+                });
+            </script>
+        @endif
+
+        @if (session('error'))
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        text: '{{ session('error') }}',
+                        confirmButtonColor: '#d33',
+                        confirmButtonText: 'OK'
+                    });
+                });
+            </script>
+        @endif
+
+        @if ($errors->any())
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    let errorMessages = '';
+                    @foreach ($errors->all() as $error)
+                        errorMessages += '<p>{{ $error }}</p>';
+                    @endforeach
+
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Validation Errors',
+                        html: errorMessages,
+                        confirmButtonColor: '#d33',
+                        confirmButtonText: 'OK'
+                    });
+                });
+            </script>
+        @endif
+
 
         <!-- Yield for additional scripts -->
 
