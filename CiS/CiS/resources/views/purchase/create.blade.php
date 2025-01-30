@@ -42,6 +42,32 @@
                         <small class="form-text text-muted">Please select the date of receiving the products.</small>
                     </div>
 
+                    <div class="form-group">
+                        <label for="warehouse_selection">Select Warehouse Option:</label><br>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="warehouse_option" id="multiWarehouse"
+                                value="multi" checked>
+                            <label class="form-check-label" for="multiWarehouse">Multi-warehouse</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="warehouse_option" id="directlyInStore"
+                                value="direct">
+                            <label class="form-check-label" for="directlyInStore">Directly in store</label>
+                        </div>
+                    </div>
+
+                    <div id="warehouseDropdown" class="form-group mt-3">
+                        <label for="warehouse_id">Select Warehouse:</label>
+                        <select class="form-control" name="warehouse_id" id="warehouse_id">
+                            <option value="" disabled selected>Select Your Warehouse</option>
+                            @foreach ($warehouses as $warehouse)
+                                <option value="{{ $warehouse->id }}">{{ $warehouse->name }}</option>
+                            @endforeach
+                        </select>
+                        <small id="warehouseHelp" class="form-text text-muted">Please select a warehouse if
+                            Multi-warehouse is selected.</small>
+                    </div>
+
                     <!-- Product Selection -->
                     <h5 class="mt-4">Product Selection</h5>
                     <div class="row mb-3">
@@ -132,9 +158,8 @@
                     <input type="hidden" name="final_price" id="final_price">
 
                     <!-- Payment Method Section -->
-                    <h5 class="mt-4">Payment Method</h5>
                     <div class="form-group">
-                        <label for="payment_methods_id">Payment Method</label>
+                        <label for="payment_methods_id">Select Payment Method:</label>
                         <select class="form-control" name="payment_methods_id" required>
                             <option value="">Select Payment Method</option>
                             @foreach ($paymentMethods as $paymentMethod)
@@ -143,7 +168,18 @@
                         </select>
                     </div>
 
+                    <!-- COGS Method Section -->
                     <div class="form-group">
+                        <label for="payment_methods_id">Select Cogs Method:</label>
+                        <select class="form-control" name="cogs_method" required>
+                            <option value="">Select COGS Method</option>
+                            @foreach ($activeCogs as $cogs_method)
+                                <option value="{{ $cogs_method->id }}">{{ $cogs_method->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    {{-- <div class="form-group">
                         <label for="warehouse_selection">Select Warehouse Option:</label><br>
                         <div class="form-check">
                             <input class="form-check-input" type="radio" name="warehouse_option" id="multiWarehouse"
@@ -159,7 +195,7 @@
 
                     <div id="warehouseDropdown" class="form-group mt-3">
                         <label for="warehouse_id">Select Warehouse:</label>
-                        <select class="form-control" name="warehouse_id" id="warehouse_id>
+                        <select class="form-control" name="warehouse_id" id="warehouse_id">
                             <option value="" disabled selected>Select Your Warehouse</option>
                             @foreach ($warehouses as $warehouse)
                                 <option value="{{ $warehouse->id }}">{{ $warehouse->name }}</option>
@@ -167,7 +203,7 @@
                         </select>
                         <small id="warehouseHelp" class="form-text text-muted">Please select a warehouse if
                             Multi-warehouse is selected.</small>
-                    </div>
+                    </div> --}}
 
                     {{-- @if ($activeWarehouses->isNotEmpty())
                         <div class="form-group">
@@ -221,7 +257,8 @@
             const multiWarehouseRadio = document.getElementById('multiWarehouse');
             const directlyInStoreRadio = document.getElementById('directlyInStore');
             const warehouseDropdown = document.getElementById('warehouseDropdown');
-            
+            const warehouseSelect = document.getElementById('warehouse_id');
+
             // Show/hide warehouse dropdown based on selected option  
             multiWarehouseRadio.addEventListener('change', function() {
                 warehouseDropdown.style.display = 'block';
@@ -242,6 +279,12 @@
                 const subtotal = price * quantity;
 
                 if (productSelect.value) {
+                    // Validate warehouse selection if multi-warehouse is selected
+                    if (multiWarehouseRadio.checked && !warehouseSelect.value) {
+                        alert('Please select a warehouse first!');
+                        return;
+                    }
+
                     const tableBody = document.querySelector('#productTable tbody');
                     const row = document.createElement('tr');
 

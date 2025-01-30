@@ -45,7 +45,12 @@ class PurchaseController extends Controller
             ->where('statusActive', 1)
             ->get();
 
-        return view('purchase.create', compact('newNumber', 'suppliers', 'paymentMethods', 'warehouses', 'products', 'activeWarehouses', 'activeShippings'));
+        $activeCogs = DB::table('detailkonfigurasi')
+            ->where('konfigurasi_id', 7)
+            ->where('statusActive', 1)
+            ->get();
+
+        return view('purchase.create', compact('newNumber', 'suppliers', 'paymentMethods', 'warehouses', 'products', 'activeWarehouses', 'activeShippings', 'activeCogs'));
     }
 
     public function detail($id)
@@ -66,11 +71,12 @@ class PurchaseController extends Controller
         // Ambil semua discount yang belum aktif dari detailkonfigurasi
         $shippings = DB::table('detailkonfigurasi')->where('konfigurasi_id', 4)->get();
         $payments = DB::table('detailkonfigurasi')->where('konfigurasi_id', 5)->get();
+        $cogs = DB::table('detailkonfigurasi')->where('konfigurasi_id', 7)->get();
 
         // Debugging line to check discounts
         // dd($discounts);
 
-        return view('purchase.konfigurasi', compact('shippings', 'payments'));
+        return view('purchase.konfigurasi', compact('shippings', 'payments', 'cogs'));
     }
 
     public function updateConfiguration(Request $request)
@@ -135,6 +141,36 @@ class PurchaseController extends Controller
                 ->update(['statusActive' => 0]);
         }
 
+        // Update cogs 
+        if ($request->has('cogs')) {
+            $checkedCogs = $request->input('cogs', []); // Ambil cogs yang dipilih
+            $allCogs = DB::table('detailkonfigurasi')->where('konfigurasi_id', 7)->get();
+
+            foreach ($allCogs as $cogs_method) {
+                if ($cogs_method->types === 'mandatory') {
+                    // Jika mandatory, tetap aktif
+                    DB::table('detailkonfigurasi')
+                        ->where('id', $cogs_method->id)
+                        ->update(['statusActive' => 1]);
+                } elseif (in_array($cogs_method->id, $checkedCogs)) {
+                    // Jika pengiriman dipilih, aktifkan
+                    DB::table('detailkonfigurasi')
+                        ->where('id', $cogs_method->id)
+                        ->update(['statusActive' => 1]);
+                } else {
+                    // Jika pengiriman tidak dipilih, reset status menjadi 0
+                    DB::table('detailkonfigurasi')
+                        ->where('id', $cogs_method->id)
+                        ->update(['statusActive' => 0]);
+                }
+            }
+        } else {
+            // Jika tidak ada pengiriman yang dipilih, reset semua status menjadi 0
+            DB::table('detailkonfigurasi')->where('konfigurasi_id', 7)
+                ->where('types', '!=', 'mandatory') // Hanya reset yang bukan mandatory
+                ->update(['statusActive' => 0]);
+        }
+
         return redirect()->route("purchase.konfigurasi")->with('status', "Horray, Your konfigurasi data has been updated");
 
     }
@@ -146,7 +182,7 @@ class PurchaseController extends Controller
     {
         // Generate invoice number
         $noNota = 'PUR' . str_pad(DB::table('purchase')->max('id') + 1, 4, '0', STR_PAD_LEFT);
-        
+
         // Determine warehouse_id based on selected option  
         $warehouseId = null;
         if ($request->input('warehouse_option') === 'multi') {
@@ -161,7 +197,7 @@ class PurchaseController extends Controller
             'shipping_cost' => $request->input('shipping_cost', 0),
             'payment_methods_id' => $request->input('payment_methods_id'),
             'suppliers_id' => $request->input('supplier_id'),
-            'warehouse_id' => $warehouseId,  
+            'warehouse_id' => $warehouseId,
         ]);
 
         $products = json_decode($request->input('products'), true);
@@ -173,11 +209,34 @@ class PurchaseController extends Controller
                 'quantity' => $product['quantity'],
             ]);
 
-            // Update product stock
-            DB::table('product')
-                ->where('id', $product['product_id'])
-                ->increment('stock', $product['quantity']); // Increase stock by the quantity purchased
+            // If multi-warehouse is selected, update product_has_warehouse
+            if ($request->input('warehouse_option') === 'multi' && $warehouseId) {
+                // Check if product already exists in this warehouse
+                $existingRecord = DB::table('product_has_warehouse')
+                    ->where('product_id', $product['product_id'])
+                    ->where('warehouse_id', $warehouseId)
+                    ->first();
+
+                if ($existingRecord) {
+                    // Update existing record
+                    DB::table('product_has_warehouse')
+                        ->where('product_id', $product['product_id'])
+                        ->where('warehouse_id', $warehouseId)
+                        ->increment('stock', $product['quantity']);
+                } else {
+                    // Create new record
+                    DB::table('product_has_warehouse')->insert([
+                        'product_id' => $product['product_id'],
+                        'warehouse_id' => $warehouseId,
+                        'stock' => $product['quantity']
+                    ]);
+                }
+            }
         }
+
+        // Call the updateInventory function
+        $purchase = Purchase::find($purchaseId); // Retrieve the Purchase model instance
+        $purchase->updateInventory($request->input('cogs_method'), $products); // Call the updateInventory method
 
         return redirect()->route("purchase.index")->with('status', "Horray, Your new purchase data is already inserted");
     }

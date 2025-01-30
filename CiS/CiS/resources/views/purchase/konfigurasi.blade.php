@@ -24,7 +24,7 @@
                     </div>
                 </div>
             </div>
-<br>
+            <br>
             {{-- PAYMENT METHODS KONFIGURATION --}}
             <h2 class="text-center mb-4">Payment Methods Configuration</h2>
             <div class="card shadow-sm">
@@ -45,7 +45,27 @@
                     </div>
                 </div>
             </div>
-
+            <br>
+            {{-- COGS KONFIGURATION --}}
+            <h2 class="text-center mb-4">COGS Method Configuration</h2>
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="form-group">
+                        <label for="shippings">Select COGS Method:</label><br>
+                        @foreach ($cogs as $cogs_method)
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="cogs[]"
+                                    value="{{ $cogs_method->id }}" id="cogs_method{{ $cogs_method->id }}"
+                                    {{ $cogs_method->statusActive === 1 ? 'checked' : '' }}
+                                    {{ $cogs_method->types === 'mandatory' ? 'disabled' : '' }}>
+                                <label class="form-check-label" for="cogs_method{{ $cogs_method->id }}">
+                                    {{ $cogs_method->name }}
+                                </label>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
             <button type="submit" class="btn btn-primary">Submit</button>
         </form>
     </div>
