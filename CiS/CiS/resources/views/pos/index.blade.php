@@ -119,17 +119,22 @@
                                     <option value="3">Credit Card</option>
                                 </select>
                             </div>
-                            <label for="" class="form-check-label mb-3 mt-3"
-                                style="font-weight: bold">Discount</label>
-                            <div class="col-12">
-                                @foreach ($konfigurasi->where('name', 'Discount')->first()->details as $item)
-                                    <input type="radio" name="discount" value="{{ $item->value }}"
-                                        class="discount_value">
-                                    <label>
-                                        {{ $item->name }}({{ $item->value }}%)
-                                    </label>
-                                    <br>
-                                @endforeach
+                            <div class="discount-section mt-3">
+                                <label class="form-label fw-bold mb-3">Discount</label>
+                                <div class="discount-options">
+                                    @foreach ($konfigurasi->where('name', 'Discount')->first()->details as $item)
+                                        <div class="mb-2">
+                                            <input type="radio" name="discount" value="{{ $item->value }}"
+                                                class="discount_value" id="discount_{{ $item->id }}">
+                                            <label for="discount_{{ $item->id }}">{{ $item->name }}</label>
+                                            <div class="custom-discount-input mt-2 ms-4" style="display: none;">
+                                                <input type="number" class="form-control form-control-sm custom-percentage"
+                                                    placeholder="Enter percentage" min="0" max="100"
+                                                    value="{{ $item->value }}" style="width: 150px;">
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -146,11 +151,11 @@
                     </div>
 
                     <!-- Discount Section -->
-                    <div class="mt-3">
+                    {{-- <div class="mt-3">
                         <label for="discount-input" class="form-label">Discount (Rp):</label>
                         <input type="number" id="discount-input" class="form-control"
                             placeholder="Enter discount in Rupiah">
-                    </div>
+                    </div> --}}
 
                     <!-- Shipping Cost Section -->
                     {{-- <div class="mt-3">
@@ -215,14 +220,17 @@
 
 
     <script>
-        // Load cart items from localStorage when page loads
+        // Initialize global variables
         let checkoutBtn = document.getElementById('checkout-btn');
+        let totalDiscountTemplate = 0;
+        let finalTotal = 0;
 
+        // Load cart on window load
         window.onload = function() {
             loadCart();
         };
 
-        // Add product to cart and save to localStorage
+        // Cart Management Functions
         function addToCart(id, name, price) {
             let cart = JSON.parse(localStorage.getItem('cart')) || [];
 
@@ -239,29 +247,21 @@
             }
 
             localStorage.setItem('cart', JSON.stringify(cart));
-
-            // Reload cart view
             loadCart();
         }
 
-        // Remove product from cart
         function removeFromCart(id) {
             let cart = JSON.parse(localStorage.getItem('cart')) || [];
             cart = cart.filter(item => item.id !== id);
-
             localStorage.setItem('cart', JSON.stringify(cart));
             loadCart();
         }
 
-        // Load cart items from localStorage and display them
         function loadCart() {
             let cart = JSON.parse(localStorage.getItem('cart')) || [];
             let cartItemsContainer = document.getElementById('cart-items');
             let totalPrice = 0;
 
-
-
-            // Clear previous cart content
             cartItemsContainer.innerHTML = '';
 
             if (cart.length === 0) {
@@ -287,149 +287,145 @@
                 checkoutBtn.style.display = 'block';
             }
 
-            // Update total price
             document.getElementById('total-price').textContent = 'Rp ' + totalPrice.toLocaleString();
+            document.getElementById('total_temp').textContent = totalPrice;
             calculateFinalTotal(totalPrice);
         }
 
-        let totalDiscountTemplate = 0;
-
-        let finalTotal = 0;
-
-        let totalShiping = 0;
-
-
+        // Discount Calculation Functions
         function calculateFinalTotal(totalPrice) {
-            const discountManual = parseInt(document.getElementById('discount-input').value) || 0;
-
             const discountTemplate = parseInt(document.querySelector('input[name="discount"]:checked')?.value || 0);
 
-            // Total diskon template
             totalDiscountTemplate = totalPrice * (discountTemplate / 100);
+            finalTotal = totalPrice - totalDiscountTemplate;
 
-            // Total akhir
-            finalTotal = totalPrice - (totalDiscountTemplate + discountManual);
-
-            // Akumulasi diskon
-            totalDiscountTemplate += discountManual;
-
-            // Update UI
             document.getElementById('total_temp').textContent = totalPrice;
             document.getElementById('final-total').textContent = 'Rp ' + finalTotal.toLocaleString();
         }
 
-
-
-        // Event listeners for discount and shipping inputs
-        document.getElementById('discount-input').addEventListener('input', function() {
-            loadCart(); // Recalculate total when discount changes
-        });
-        // document.getElementById('shipping-cost-input').addEventListener('input', function() {
-        //     loadCart(); // Recalculate total when shipping cost changes
-        // });
-
-
-        document.querySelectorAll('input[name="discount"]').forEach((radio) => {
+        // Event Listeners for Discount
+        document.querySelectorAll('.discount_value').forEach((radio) => {
             radio.addEventListener('change', function() {
-                let totalPrice = parseInt(document.getElementById('total_temp').textContent)
+                document.querySelectorAll('.custom-discount-input').forEach(input => {
+                    input.style.display = 'none';
+                });
+
+                if (this.checked) {
+                    const customInput = this.closest('div').querySelector('.custom-discount-input');
+                    customInput.style.display = 'block';
+
+                    const percentageInput = customInput.querySelector('.custom-percentage');
+                    percentageInput.value = this.value;
+                }
+
+                let totalPrice = parseInt(document.getElementById('total_temp').textContent || 0);
                 calculateFinalTotal(totalPrice);
             });
         });
 
+        document.querySelectorAll('.custom-percentage').forEach((input) => {
+            input.addEventListener('input', function() {
+                if (this.value > 100) this.value = 100;
+                if (this.value < 0) this.value = 0;
+
+                const radio = this.closest('div').parentElement.querySelector('input[type="radio"]');
+                radio.value = this.value;
+
+                const totalPrice = parseInt(document.getElementById('total_temp').textContent || 0);
+                calculateFinalTotal(totalPrice);
+            });
+        });
+
+        // Checkout Handler
         checkoutBtn.addEventListener('click', function() {
             let cart = JSON.parse(localStorage.getItem('cart')) || [];
-            // const shippingCost = parseInt(document.getElementById('shipping-cost-input').value) || 0;
             const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
             const customer_id = document.getElementById('customer_id').value;
             const payment_method_id = document.getElementById('payment_method_id').value;
 
-
-
-            if (customer_id == '') {
+            if (!customer_id) {
                 Swal.fire({
                     icon: 'warning',
                     title: 'Peringatan',
                     text: 'Harap pilih customer terlebih dahulu!',
                     confirmButtonText: 'OK'
                 });
-            } else {
-                if (payment_method_id == '') {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Peringatan',
-                        text: 'Harap pilih payment method terlebih dahulu!',
-                        confirmButtonText: 'OK'
-                    });
-                } else {
-                    // Prepare data to send
-                    const data = {
-                        cart,
-                        discount: totalDiscountTemplate,
-                        shipping_cost: 0,
-                        total_price: totalPrice,
-                        final_total: finalTotal,
-                        customer_id,
-                        payment_method_id
-                    };
+                return;
+            }
 
-                    // Get CSRF token from the meta tag in the blade file
-                    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            if (!payment_method_id) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Peringatan',
+                    text: 'Harap pilih payment method terlebih dahulu!',
+                    confirmButtonText: 'OK'
+                });
+                return;
+            }
 
-                    // Send the data using fetch
-                    fetch('/pos/store', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': csrfToken
-                            },
-                            body: JSON.stringify(data)
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.status) {
-                                Swal.fire({
-                                    icon: 'success',
-                                    title: 'Pesanan Berhasil',
-                                    text: data.message || 'Pesanan telah berhasil diproses.',
-                                    confirmButtonText: 'OK'
-                                }).then(() => {
-                                    localStorage.removeItem('cart');
-                                    window.open('/pos/' + data.data.id)
-                                });
-                            } else {
-                                if (data.errors) {
-                                    let errorMessage = '';
-                                    for (const [field, messages] of Object.entries(data.errors)) {
-                                        errorMessage += `${field}: ${messages.join(', ')}\n`;
-                                    }
+            const data = {
+                cart,
+                discount: totalDiscountTemplate,
+                shipping_cost: 0,
+                total_price: totalPrice,
+                final_total: finalTotal,
+                customer_id,
+                payment_method_id
+            };
 
-                                    Swal.fire({
-                                        icon: 'error',
-                                        title: 'Validasi Gagal',
-                                        text: errorMessage,
-                                        confirmButtonText: 'Tutup'
-                                    });
-                                } else {
-                                    Swal.fire({
-                                        icon: 'error',
-                                        title: 'Terjadi Kesalahan',
-                                        text: data.message || 'Silakan coba lagi.',
-                                        confirmButtonText: 'Tutup'
-                                    });
-                                }
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+            fetch('/pos/store', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Pesanan Berhasil',
+                            text: data.message || 'Pesanan telah berhasil diproses.',
+                            confirmButtonText: 'OK'
+                        }).then(() => {
+                            localStorage.removeItem('cart');
+                            window.open('/pos/' + data.data.id);
+                        });
+                    } else {
+                        if (data.errors) {
+                            let errorMessage = '';
+                            for (const [field, messages] of Object.entries(data.errors)) {
+                                errorMessage += `${field}: ${messages.join(', ')}\n`;
                             }
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
                             Swal.fire({
                                 icon: 'error',
-                                title: 'Gagal Mengirim Data',
-                                text: 'Periksa koneksi Anda dan coba lagi.',
+                                title: 'Validasi Gagal',
+                                text: errorMessage,
                                 confirmButtonText: 'Tutup'
                             });
-                        });
-                }
-            }
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Terjadi Kesalahan',
+                                text: data.message || 'Silakan coba lagi.',
+                                confirmButtonText: 'Tutup'
+                            });
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal Mengirim Data',
+                        text: 'Periksa koneksi Anda dan coba lagi.',
+                        confirmButtonText: 'Tutup'
+                    });
+                });
         });
     </script>
 @endsection
