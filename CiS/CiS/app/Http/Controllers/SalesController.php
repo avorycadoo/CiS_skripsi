@@ -55,8 +55,13 @@ class SalesController extends Controller
             ->where('statusActive', 1)
             ->get(); // Get only the IDs of active payments
 
+        $activeCogs = DB::table('detailkonfigurasi')
+            ->where('konfigurasi_id', 8)
+            ->where('statusActive', 1)
+            ->get();
+
         // Pass the payment methods to the view
-        return view('sales.create', compact('newNumber', 'customers', 'paymentMethods', 'products', 'employees', 'activeDiscounts', 'activeShippings', 'activePayments'));
+        return view('sales.create', compact('newNumber', 'customers', 'paymentMethods', 'products', 'employees', 'activeDiscounts', 'activeShippings', 'activePayments', 'activeCogs'));
 
     }
 
@@ -95,14 +100,6 @@ class SalesController extends Controller
         return view('sales.retur', compact('salesDetails', 'customers', 'salesByCustomer', 'productsBySale'));
     }
 
-
-
-
-
-
-
-
-
     public function returPenjualan()
     {
 
@@ -123,11 +120,12 @@ class SalesController extends Controller
         $discounts = DB::table('detailkonfigurasi')->where('konfigurasi_id', 1)->get();
         $shippings = DB::table('detailkonfigurasi')->where('konfigurasi_id', 2)->get();
         $payments = DB::table('detailkonfigurasi')->where('konfigurasi_id', 3)->get();
+        $cogs = DB::table('detailkonfigurasi')->where('konfigurasi_id', 8)->get();
 
         // Debugging line to check discounts
         // dd($discounts);
 
-        return view('sales.konfigurasi', compact('discounts', 'shippings', 'payments'));
+        return view('sales.konfigurasi', compact('discounts', 'shippings', 'payments', 'cogs'));
     }
 
     public function updateConfiguration(Request $request)
@@ -208,18 +206,35 @@ class SalesController extends Controller
                 ->update(['statusActive' => 0]);
         }
 
-        // Save the selected payment method IDs into detailkonfigurasi
-        // if ($request->has('payment_methods')) {
-        //     foreach ($request->input('payment_methods') as $paymentMethodId) {
-        //         // Ensure the payment method ID is valid
-        //         if (DB::table('payment_methods')->where('id', $paymentMethodId)->exists()) {
-        //             DB::table('detailkonfigurasi')->updateOrInsert(
-        //                 ['id' => $paymentMethodId],
-        //                 ['statusActive' => 1] // Set it active
-        //             );
-        //         }
-        //     }
-        // }
+        // Update cogs 
+        if ($request->has('cogs')) {
+            $checkedCogs = $request->input('cogs', []); // Ambil cogs yang dipilih
+            $allCogs = DB::table('detailkonfigurasi')->where('konfigurasi_id', 8)->get();
+
+            foreach ($allCogs as $cogs_method) {
+                if ($cogs_method->types === 'mandatory') {
+                    // Jika mandatory, tetap aktif
+                    DB::table('detailkonfigurasi')
+                        ->where('id', $cogs_method->id)
+                        ->update(['statusActive' => 1]);
+                } elseif (in_array($cogs_method->id, $checkedCogs)) {
+                    // Jika pengiriman dipilih, aktifkan
+                    DB::table('detailkonfigurasi')
+                        ->where('id', $cogs_method->id)
+                        ->update(['statusActive' => 1]);
+                } else {
+                    // Jika pengiriman tidak dipilih, reset status menjadi 0
+                    DB::table('detailkonfigurasi')
+                        ->where('id', $cogs_method->id)
+                        ->update(['statusActive' => 0]);
+                }
+            }
+        } else {
+            // Jika tidak ada pengiriman yang dipilih, reset semua status menjadi 0
+            DB::table('detailkonfigurasi')->where('konfigurasi_id', 8)
+                ->where('types', '!=', 'mandatory') // Hanya reset yang bukan mandatory
+                ->update(['statusActive' => 0]);
+        }
 
         return redirect()->route("sales.konfigurasi")->with('status', "Horray, Your konfigurasi data has been updated");
     }
@@ -227,52 +242,96 @@ class SalesController extends Controller
 
     public function store(Request $request)
     {
-        \Log::info('Final Price received:', ['final_price' => $request->input('final_price')]);
+        try {
+            // Start database transaction
+            DB::beginTransaction();
 
+            try {
+                // Map COGS method ID to name (based on your form values)
+                $cogsMethodMap = [
+                    '18' => 'fifo',
+                    '19' => 'average'
+                ];
 
-        // Generate invoice number
-        $noNota = 'INV' . str_pad(DB::table('sales')->max('id') + 1, 4, '0', STR_PAD_LEFT);
+                $cogsMethod = $cogsMethodMap[$request->input('cogs_method')] ?? null;
 
-        // Insert into sales table
-        $salesId = DB::table('sales')->insertGetId([
-            'noNota' => $noNota,
-            'total_price' => $request->input('final_price'), // Calculate total price
-            'date' => $request->input('sales_date'),
-            'employes_id' => $request->input('sales_employes_id'),
-            'payment_methods_id' => $request->input('payment_methods_id'),
-            'customers_id' => $request->input('sales_cust_id'),
-            'shipping_cost' => $request->input('shipping_cost', 0),
-            'discount' => $request->input('sales_disc', 0),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+                // Validate that the COGS method is valid
+                if (!$cogsMethod) {
+                    throw new \Exception('Invalid COGS method selected');
+                }
 
-        $products = json_decode($request->input('products'), true);
-        // dd($products);
-        foreach ($products as $product) {
-            DB::table('sales_detail')->insert([
-                'product_id' => $product['product_id'],
-                'sales_id' => $salesId,
-                'total_quantity' => $product['quantity'],
-                'total_price' => $product['price'] * $product['quantity'], // Calculate total price for the product
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+                // Generate invoice number
+                $lastId = DB::table('sales')->max('id') ?? 0;
+                $noNota = 'INV' . str_pad($lastId + 1, 4, '0', STR_PAD_LEFT);
 
-            // Update product stock
-            DB::table('product')
-                ->where('id', $product['product_id'])
-                ->decrement('stock', $product['quantity']); // Decrease stock by the quantity sold
+                // Create the sale record
+                $sale = Sales::create([
+                    'noNota' => $noNota,
+                    'total_price' => $request->input('final_price'),
+                    'date' => $request->input('sales_date'),
+                    'shipped_date' => $request->input('sales_shipdate'),
+                    'employes_id' => $request->input('sales_employes_id'),
+                    'payment_methods_id' => $request->input('payment_methods_id'),
+                    'customers_id' => $request->input('sales_cust_id'),
+                    'shipping_cost' => $request->input('shipping_cost', 0),
+                    'discount' => $request->input('sales_disc', 0),
+                ]);
+
+                // Process products
+                $products = json_decode($request->input('products'), true);
+
+                if (empty($products)) {
+                    throw new \Exception('No products provided for the sale');
+                }
+
+                // Insert sales details and collect product data for inventory update
+                $productsForInventory = [];
+                foreach ($products as $product) {
+                    // Insert into sales_detail
+                    DB::table('sales_detail')->insert([
+                        'product_id' => $product['product_id'],
+                        'sales_id' => $sale->id,
+                        'total_quantity' => $product['quantity'],
+                        'total_price' => $product['price'] * $product['quantity'],
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+
+                    // Prepare product data for inventory update
+                    $productsForInventory[] = [
+                        'product_id' => $product['product_id'],
+                        'quantity' => $product['quantity']
+                    ];
+                }
+
+                // Update inventory using the model's updateInventory method
+                $sale->updateInventory($cogsMethod, $productsForInventory);
+
+                // Commit transaction
+                DB::commit();
+
+                return redirect()
+                    ->route('sales.index')
+                    ->with('success', 'Sale has been created successfully');
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                \Log::error('Failed to create sale: ' . $e->getMessage());
+                throw $e;
+            }
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return redirect()
+                ->back()
+                ->withErrors($e->errors())
+                ->withInput();
+        } catch (\Exception $e) {
+            return redirect()
+                ->back()
+                ->with('error', 'Failed to create sale. ' . $e->getMessage())
+                ->withInput();
         }
-        return redirect()->route("sales.index")->with('status', "Horray, Your new transaction data is already inserted");
     }
-
-
-
-
-
-
-
     /**
      * Display the specified resource.
      */

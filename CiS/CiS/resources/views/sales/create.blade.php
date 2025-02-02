@@ -26,7 +26,7 @@
                             @endforeach
                         </select>
                         <small class="form-text text-muted">Please select a customer.</small>
-                    </div>
+                    </div>  
 
                     <!-- Employee Selection -->
                     <div class="form-group">
@@ -169,6 +169,17 @@
                         <p>No active Payment available.</p>
                     @endif
 
+                    <!-- COGS Method Section -->
+                    <div class="form-group">
+                        <label for="payment_methods_id">Select Cogs Method:</label>
+                        <select class="form-control" name="cogs_method" required>
+                            <option value="">Select COGS Method</option>
+                            @foreach ($activeCogs as $cogs_method)
+                                <option value="{{ $cogs_method->id }}">{{ $cogs_method->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
                     <div class="d-flex justify-content-end mt-4">
                         <a class="btn btn-info me-2" href="{{ url()->previous() }}">Cancel</a>
                         <button type="submit" class="btn btn-primary">Submit</button>
@@ -285,7 +296,7 @@
                 // Calculate discount amount
                 const discountAmount = (totalPrice * discountValue) / 100; // Calculate discount amount
                 document.getElementById('sales_disc').value = discountAmount.toFixed(
-                2); // Set discount amount in hidden input
+                    2); // Set discount amount in hidden input
 
                 // Get selected shipping value
                 const selectedShipping = document.querySelector('input[name="shipping_id"]:checked');

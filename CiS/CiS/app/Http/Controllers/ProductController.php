@@ -114,12 +114,11 @@ class ProductController extends Controller
         $updatedData->name = $request->name;
         $updatedData->desc = $request->desc;
         $updatedData->price = $request->price;
-        $updatedData->stock = $request->stock;
-        $updatedData->cogs_methods = $request->cogs_methods;
+        $updatedData->cost = $request->cost;
+        // $updatedData->stock = $request->stock;
+        // $updatedData->cogs_methods = $request->cogs_methods;
         $updatedData->minimum_stock = $request->minimum_stock;
         $updatedData->maksimum_retur = $request->maksimum_retur;
-        $updatedData->discount = $request->discount;
-        $updatedData->discount_type = $request->discount_type;
 
         $updatedData->save();
 
