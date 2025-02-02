@@ -26,7 +26,7 @@
                             @endforeach
                         </select>
                         <small class="form-text text-muted">Please select a customer.</small>
-                    </div>  
+                    </div>
 
                     <!-- Employee Selection -->
                     <div class="form-group">
@@ -98,55 +98,71 @@
                     </div>
 
                     <!-- Discount Section -->
-                    @if ($activeDiscounts->isNotEmpty())
-                        <div class="form-group mt-4">
-                            <button type="button" class="btn btn-primary" id="addDiscountBtn">Add Discount</button>
+                    <div class="card mt-4 shadow-sm">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">Discount Options</h5>
                         </div>
-                        <div id="discountSection" style="display: none;">
-                            <h5>Select Discount:</h5>
-                            @foreach ($activeDiscounts as $discount)
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="discount_id"
-                                        value="{{ $discount->value }}" id="discount{{ $discount->id }}">
-                                    <label class="form-check-label" for="discount{{ $discount->id }}">
-                                        {{ $discount->name }} ({{ $discount->value }}%)
-                                    </label>
-                                </div>
-                            @endforeach
-                            <input type="hidden" name="sales_disc" id="sales_disc" value="0">
+                        <div class="card-body">
+                            @if ($activeDiscounts->isNotEmpty())
+                                @foreach ($activeDiscounts as $discount)
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input discount-radio" type="radio" name="discount_id"
+                                            value="{{ $discount->value }}" id="discount{{ $discount->id }}"
+                                            data-name="{{ $discount->name }}">
+                                        <label class="form-check-label" for="discount{{ $discount->id }}">
+                                            {{ $discount->name }}
+                                        </label>
+                                        <div class="ms-4 mt-2 discount-value-input" style="display: none;">
+                                            <div class="input-group" style="max-width: 200px;">
+                                                <input type="number" class="form-control" value="{{ $discount->value }}"
+                                                    min="0" max="100" step="0.1">
+                                                <span class="input-group-text">%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                                <input type="hidden" name="sales_disc" id="sales_disc" value="0">
+                            @else
+                                <p>No active discounts available.</p>
+                            @endif
                         </div>
-                    @else
-                        <p>No active discounts available.</p>
-                    @endif
-
-                    <!-- Shipping Section -->
-                    <h5 class="mt-4">Shipping Information</h5>
-                    <div class="form-group">
-                        <label for="shipped_date">Shipped Date</label>
-                        <input type="date" class="form-control" name="sales_shipdate" id="shipped_date">
                     </div>
 
-                    @if ($activeShippings->isNotEmpty())
-                        <div class="form-group mt-4">
-                            <button type="button" class="btn btn-primary" id="addShippingBtn">Add Shipping</button>
+                    <!-- Shipping Section -->
+                    <div class="card mt-4 shadow-sm">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">Shipping Options</h5>
                         </div>
-                        <div id="shippingSection" style="display: none;">
-                            <h5>Select Shipping:</h5>
-                            @foreach ($activeShippings as $shipping)
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="shipping_id"
-                                        value="{{ $shipping->value }}" id="shipping{{ $shipping->id }}">
-                                    <label class="form-check-label" for="shipping{{ $shipping->id }}">
-                                        {{ $shipping->name }} (Rp.{{ $shipping->value }})
-                                    </label>
-                                </div>
-                            @endforeach
-                            <input type="hidden" name="shipping_cost" id="shipping_cost" value="0">
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label for="shipped_date">Shipped Date</label>
+                                <input type="date" class="form-control" name="sales_shipdate" id="shipped_date">
+                            </div>
 
+                            @if ($activeShippings->isNotEmpty())
+                                @foreach ($activeShippings as $shipping)
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input shipping-radio" type="radio" name="shipping_id"
+                                            value="{{ $shipping->value }}" id="shipping{{ $shipping->id }}"
+                                            data-name="{{ $shipping->name }}">
+                                        <label class="form-check-label" for="shipping{{ $shipping->id }}">
+                                            {{ $shipping->name }}
+                                        </label>
+                                        <div class="ms-4 mt-2 shipping-value-input" style="display: none;">
+                                            <div class="input-group" style="max-width: 200px;">
+                                                <span class="input-group-text">Rp</span>
+                                                <input type="number" class="form-control"
+                                                    value="{{ $shipping->value }}" min="0" step="1000">
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                                <input type="hidden" name="shipping_cost" id="shipping_cost" value="0">
+                            @else
+                                <p>No active shipping options available.</p>
+                            @endif
                         </div>
-                    @else
-                        <p>No active shipping available.</p>
-                    @endif
+                    </div>
 
                     {{-- SECTION FINAL PRICE --}}
                     <h5 class="mt-4">Final Price After Discount and Shipping: <span id="finalPrice">Rp 0</span></h5>
@@ -262,18 +278,54 @@
             }
 
             // Update total price when discount is selected
-            const discountRadios = document.querySelectorAll('input[name="discount_id"]');
+            const discountRadios = document.querySelectorAll('.discount-radio');
             discountRadios.forEach(radio => {
                 radio.addEventListener('change', function() {
-                    updateTotalPrice(); // Update total price when discount is selected
+                    // Hide all input fields first
+                    document.querySelectorAll('.discount-value-input').forEach(input => {
+                        input.style.display = 'none';
+                    });
+
+                    // Show input field for selected radio
+                    if (this.checked) {
+                        const inputDiv = this.closest('.form-check').querySelector(
+                            '.discount-value-input');
+                        inputDiv.style.display = 'block';
+
+                        // Update the discount value when input changes
+                        const valueInput = inputDiv.querySelector('input');
+                        valueInput.addEventListener('input', function() {
+                            radio.value = this.value;
+                            updateTotalPrice();
+                        });
+                    }
+                    updateTotalPrice();
                 });
             });
 
             // Update total price when shipping is selected
-            const shippingRadios = document.querySelectorAll('input[name="shipping_id"]');
+            const shippingRadios = document.querySelectorAll('.shipping-radio');
             shippingRadios.forEach(radio => {
                 radio.addEventListener('change', function() {
-                    updateTotalPrice(); // Update total price when shipping is selected
+                    // Hide all input fields first
+                    document.querySelectorAll('.shipping-value-input').forEach(input => {
+                        input.style.display = 'none';
+                    });
+
+                    // Show input field for selected radio
+                    if (this.checked) {
+                        const inputDiv = this.closest('.form-check').querySelector(
+                            '.shipping-value-input');
+                        inputDiv.style.display = 'block';
+
+                        // Update the shipping value when input changes
+                        const valueInput = inputDiv.querySelector('input');
+                        valueInput.addEventListener('input', function() {
+                            radio.value = this.value;
+                            updateTotalPrice();
+                        });
+                    }
+                    updateTotalPrice();
                 });
             });
 
