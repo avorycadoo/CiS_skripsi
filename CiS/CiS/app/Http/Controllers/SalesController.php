@@ -12,6 +12,7 @@ use App\Models\Sales_detail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Auth;
 
 class SalesController extends Controller
 {
@@ -60,8 +61,13 @@ class SalesController extends Controller
             ->where('statusActive', 1)
             ->get();
 
+        $user = Auth::user();
+    
+        // Find the corresponding employee ID
+        $employeId = Employe::where('users_id', $user->id)->value('id');
+        
         // Pass the payment methods to the view
-        return view('sales.create', compact('newNumber', 'customers', 'paymentMethods', 'products', 'employees', 'activeDiscounts', 'activeShippings', 'activePayments', 'activeCogs'));
+        return view('sales.create', compact('newNumber', 'customers', 'paymentMethods', 'products', 'employees', 'activeDiscounts', 'activeShippings', 'activePayments', 'activeCogs', 'employeId'));
 
     }
 
@@ -234,6 +240,24 @@ class SalesController extends Controller
             DB::table('detailkonfigurasi')->where('konfigurasi_id', 8)
                 ->where('types', '!=', 'mandatory') // Hanya reset yang bukan mandatory
                 ->update(['statusActive' => 0]);
+        }
+
+        // Update discount values
+        if ($request->has('discount_values')) {
+            foreach ($request->input('discount_values') as $id => $value) {
+                DB::table('detailkonfigurasi')
+                    ->where('id', $id)
+                    ->update(['value' => $value]);
+            }
+        }
+
+        // Update shipping values
+        if ($request->has('shipping_values')) {
+            foreach ($request->input('shipping_values') as $id => $value) {
+                DB::table('detailkonfigurasi')
+                    ->where('id', $id)
+                    ->update(['value' => $value]);
+            }
         }
 
         return redirect()->route("sales.konfigurasi")->with('status', "Horray, Your konfigurasi data has been updated");

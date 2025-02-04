@@ -171,6 +171,14 @@ class PurchaseController extends Controller
                 ->update(['statusActive' => 0]);
         }
 
+        if ($request->has('shipping_values')) {
+            foreach ($request->input('shipping_values') as $id => $value) {
+                DB::table('detailkonfigurasi')
+                    ->where('id', $id)
+                    ->update(['value' => $value]);
+            }
+        }
+        
         return redirect()->route("purchase.konfigurasi")->with('status', "Horray, Your konfigurasi data has been updated");
 
     }

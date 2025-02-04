@@ -30,16 +30,10 @@
 
                     <!-- Employee Selection -->
                     <div class="form-group">
-                        <label for="employee_id">Employee Name</label>
-                        <select class="form-control" name="sales_employes_id" required>
-                            <option value="">Select Employee</option>
-                            @foreach ($employees as $employee)
-                                <option value="{{ $employee->id }}">{{ $employee->name }}</option>
-                            @endforeach
-                        </select>
-                        <small class="form-text text-muted">Please select an employee.</small>
+                        <label for="employee_id">Employee Name:</label>
+                        <input type="text" class="form-control" value="{{ Auth::user()->username }}" readonly>
+                        <input type="hidden" name="sales_employes_id" value="{{ $employeId }}">
                     </div>
-
                     <!-- Date Section -->
                     <div class="form-group">
                         <label for="sales_date">Date</label>
@@ -98,43 +92,46 @@
                     </div>
 
                     <!-- Discount Section -->
-                    <div class="card mt-4 shadow-sm">
-                        <div class="card-header bg-light">
-                            <h5 class="mb-0">Discount Options</h5>
+                    <div class="card mt-4">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#discountCollapse">
+                            <h5 class="mb-0">Discount Options <i class="bi bi-chevron-down"></i></h5>
                         </div>
-                        <div class="card-body">
-                            @if ($activeDiscounts->isNotEmpty())
-                                @foreach ($activeDiscounts as $discount)
-                                    <div class="form-check mb-3">
-                                        <input class="form-check-input discount-radio" type="radio" name="discount_id"
-                                            value="{{ $discount->value }}" id="discount{{ $discount->id }}"
-                                            data-name="{{ $discount->name }}">
-                                        <label class="form-check-label" for="discount{{ $discount->id }}">
-                                            {{ $discount->name }}
-                                        </label>
-                                        <div class="ms-4 mt-2 discount-value-input" style="display: none;">
-                                            <div class="input-group" style="max-width: 200px;">
-                                                <input type="number" class="form-control" value="{{ $discount->value }}"
-                                                    min="0" max="100" step="0.1">
-                                                <span class="input-group-text">%</span>
+                        <div class="collapse" id="discountCollapse">
+                            <div class="card-body">
+                                @if ($activeDiscounts->isNotEmpty())
+                                    @foreach ($activeDiscounts as $discount)
+                                        <div class="form-check mb-3">
+                                            <input class="form-check-input discount-radio" type="radio" name="discount_id"
+                                                value="{{ $discount->value }}" id="discount{{ $discount->id }}"
+                                                data-name="{{ $discount->name }}">
+                                            <label class="form-check-label" for="discount{{ $discount->id }}">
+                                                {{ $discount->name }}
+                                            </label>
+                                            <div class="ms-4 mt-2 discount-value-input" style="display: none;">
+                                                <div class="input-group" style="max-width: 200px;">
+                                                    <input type="number" class="form-control"
+                                                        value="{{ $discount->value }}" min="0" max="100"
+                                                        step="0.1">
+                                                    <span class="input-group-text">%</span>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                @endforeach
-                                <input type="hidden" name="sales_disc" id="sales_disc" value="0">
-                            @else
-                                <p>No active discounts available.</p>
-                            @endif
+                                    @endforeach
+                                    <input type="hidden" name="sales_disc" id="sales_disc" value="0">
+                                @else
+                                    <p>No active discounts available.</p>
+                                @endif
+                            </div>
                         </div>
                     </div>
 
                     <!-- Shipping Section -->
-                    <div class="card mt-4 shadow-sm">
-                        <div class="card-header bg-light">
-                            <h5 class="mb-0">Shipping Options</h5>
+                    <div class="card mt-4 ">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#shippingCollapse">
+                            <h5 class="mb-0">Shipping Options <i class="bi bi-chevron-down"></i></h5>
                         </div>
-                        <div class="card-body">
-                            <div class="form-group">
+                        <div class="collapse" id="shippingCollapse">
+                            <div class="card-body">
                                 <label for="shipped_date">Shipped Date</label>
                                 <input type="date" class="form-control" name="sales_shipdate" id="shipped_date">
                             </div>
@@ -165,8 +162,15 @@
                     </div>
 
                     {{-- SECTION FINAL PRICE --}}
-                    <h5 class="mt-4">Final Price After Discount and Shipping: <span id="finalPrice">Rp 0</span></h5>
-                    <input type="hidden" name="final_price" id="final_price">
+                    <div class="card mt-4 border-0" style="background-color: #f8f9fa;">
+                        <div class="card-body text-center">
+                            <h4 class="text-muted">Final Price</h4>
+                            <h2 class="display-4 mb-0 text-primary" id="finalPrice">Rp 0</h2>
+                            {{-- <input type="hidden" name="final_price" id="final_price"> --}}
+                        </div>
+                        <input type="hidden" name="final_price" id="final_price">
+
+                    </div>
 
                     {{-- SECTION PAYMENT METHODS --}}
                     @if ($activePayments->isNotEmpty())
@@ -197,7 +201,7 @@
                     </div>
 
                     <div class="d-flex justify-content-end mt-4">
-                        <a class="btn btn-info me-2" href="{{ url()->previous() }}">Cancel</a>
+                        <a class="btn btn-secondary me-2" href="{{ url()->previous() }}">Cancel</a>
                         <button type="submit" class="btn btn-primary">Submit</button>
                     </div>
                 </div>
@@ -332,12 +336,45 @@
             function updateTotalPrice() {
                 const rows = document.querySelectorAll('#productTable tbody tr');
                 let totalPrice = 0;
+                let totalQuantity = 0;
+                let hasProducts = false;
 
                 rows.forEach(row => {
                     const amount = parseFloat(row.children[3].textContent.replace('Rp ', '').replace(/,/g,
                         '')) || 0;
+                    const quantity = parseInt(row.children[2].textContent) || 0;
                     totalPrice += amount;
+                    totalQuantity += quantity;
+                    if (quantity >= 1) hasProducts = true;
                 });
+
+                let discountRadios = document.querySelectorAll('.discount-radio');
+                let perProductDiscount = document.querySelector('input[data-name="Discount per product"]');
+                let minimumPurchaseRadio = document.querySelector('input[data-name="Minimum purchase discount"]');
+                let volumeDiscountRadio = document.querySelector(
+                    'input[data-name="Discount on the number of product purchases"]');
+
+                // Reset all radios
+                discountRadios.forEach(radio => {
+                    radio.checked = false;
+                    radio.closest('.form-check').querySelector('.discount-value-input').style.display =
+                        'none';
+                });
+
+                // Check conditions and apply highest applicable discount
+                if (totalQuantity >= 20 && volumeDiscountRadio) {
+                    volumeDiscountRadio.checked = true;
+                    volumeDiscountRadio.closest('.form-check').querySelector('.discount-value-input').style
+                        .display = 'block';
+                } else if (totalPrice >= 2000000 && minimumPurchaseRadio) {
+                    minimumPurchaseRadio.checked = true;
+                    minimumPurchaseRadio.closest('.form-check').querySelector('.discount-value-input').style
+                        .display = 'block';
+                } else if (hasProducts && perProductDiscount) {
+                    perProductDiscount.checked = true;
+                    perProductDiscount.closest('.form-check').querySelector('.discount-value-input').style.display =
+                        'block';
+                }
 
                 document.getElementById('totalPrice').textContent = `Rp ${totalPrice.toFixed(2)}`;
 
@@ -346,26 +383,31 @@
                 const discountValue = selectedDiscount ? parseFloat(selectedDiscount.value) : 0;
 
                 // Calculate discount amount
-                const discountAmount = (totalPrice * discountValue) / 100; // Calculate discount amount
-                document.getElementById('sales_disc').value = discountAmount.toFixed(
-                    2); // Set discount amount in hidden input
+                const discountAmount = (totalPrice * discountValue) / 100;
+                document.getElementById('sales_disc').value = discountAmount.toFixed(2);
 
-                // Get selected shipping value
+                // Get shipping value
                 const selectedShipping = document.querySelector('input[name="shipping_id"]:checked');
                 const shippingValue = selectedShipping ? parseFloat(selectedShipping.value) : 0;
-                document.getElementById('shipping_cost').value = shippingValue.toFixed(
-                    2);
+                document.getElementById('shipping_cost').value = shippingValue.toFixed(2);
 
-                // Calculate final price
-                const finalPrice = totalPrice - discountAmount + shippingValue; // Deduct discount and add shipping
+                const finalPrice = totalPrice - discountAmount + shippingValue;
 
-                // Ensure final price is not less than 0
                 document.getElementById('finalPrice').innerText = 'Rp ' + Math.max(finalPrice, 0).toLocaleString(
                     'id-ID', {
                         minimumFractionDigits: 2
                     });
                 document.getElementById('final_price').value = Math.max(finalPrice, 0);
             }
+
+            // Add event listeners for discount value inputs
+            document.querySelectorAll('.discount-value-input input').forEach(input => {
+                input.addEventListener('input', function() {
+                    const radio = this.closest('.form-check').querySelector('.discount-radio');
+                    radio.value = this.value;
+                    updateTotalPrice();
+                });
+            });
 
             // Attach the addProduct function to the button click event
             document.getElementById('addProduct').addEventListener('click', addProduct);

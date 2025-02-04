@@ -17,11 +17,14 @@
                                 <label class="form-check-label" for="warehouse{{ $warehouse->id }}">
                                     {{ $warehouse->name }}
                                 </label>
+                                <div>
+                                    <small class="text-muted">{{ $warehouse->desc }}</small>
+                                </div>
                             </div>
                         @endforeach
                     </div>
                     <div class="text-center mt-4">
-                        <button type="submit" class="btn btn-primary">Submit</button>
+                        <button type="submit" class="btn btn-primary">Save Configurations</button>
                     </div>
                 </div>
             </div>
