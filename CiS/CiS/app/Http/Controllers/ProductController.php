@@ -79,7 +79,46 @@ class ProductController extends Controller
                 'stock' => $stock,
             ]);
         }
+
+        $data->in_order_sales = 0;
+        $data->save();
+        
         return redirect()->route("product.index")->with('status', "Horray, Your new product data is already inserted");
+    }
+
+
+    public function createShipping(Request $request)
+    {
+        $validatedData = $request->validate([
+            'product_id' => 'required|exists:product,id',
+            'quantity_shipped' => 'required|integer|min:1',
+        ]);
+
+        
+
+        $product = Product::find($validatedData['product_id']);
+        
+        // Check if there are any orders to ship
+        if ($product->in_order_penjualan <= 0) {
+            return redirect()->route('sales.shipping')->with('error', 'No orders pending for this product.');
+        }
+        // Subtract quantity_shipped from stock
+        $product->stock -= $validatedData['quantity_shipped'];
+        
+        // Subtract quantity_shipped from in_order
+        $product->in_order_penjualan -= $validatedData['quantity_shipped'];
+        
+        $product->save();
+
+        return redirect()->route('sales.shipping')->with('success', 'Shipment created successfully.');
+    }
+    
+    public function confirmReceipt(Product $product)
+    {
+        $product->in_order_penjualan = 0; // Reset in_order_penjualan to 0
+        $product->save();
+    
+        return redirect()->route('sales.shipping')->with('success', 'Shipment receipt confirmed.');
     }
 
 

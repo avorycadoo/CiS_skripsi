@@ -25,6 +25,18 @@ class SalesController extends Controller
         return view('sales.index', ['datas' => $sales]);
     }
 
+    public function shipping()
+    {
+        $products = Product::all();
+        return view('sales.shipping', compact('products'));
+    }
+
+    public function createShipping()
+    {
+        $products = Product::all();
+        return view('sales.createShipping', compact('products'));
+    }
+
     /**
      * Show the form for creating a new resource.
      */

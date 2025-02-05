@@ -70,6 +70,11 @@
                             <span>Transaction Sales</span>
                         </a>
 
+                        <a class="collapse-item" href="salesShipping">
+                            <i class="fas fa-fw fa-truck"></i>
+                            <span>Shipping</span>
+                        </a>
+
                         <a class="collapse-item" href="salesKonfigurasi">
                             <i class="fas fa-fw fa-receipt"></i>
                             <span>Sales Configurations</span>
@@ -137,10 +142,10 @@
                             <span>Suppliers</span>
                         </a>
 
-                        <a class="collapse-item" href="{{ route('warehouse.konfigurasi') }}">  
-                            <i class="fas fa-fw fa-receipt"></i>  
-                            <span>Warehouse Configurations</span>  
-                        </a>  
+                        <a class="collapse-item" href="{{ route('warehouse.konfigurasi') }}">
+                            <i class="fas fa-fw fa-receipt"></i>
+                            <span>Warehouse Configurations</span>
+                        </a>
                     </div>
                 </div>
             </li>

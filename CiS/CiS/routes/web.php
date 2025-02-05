@@ -86,6 +86,12 @@ Route::middleware('auth')->group(function () {
     Route::post('product/simpanPhoto', [ProductImageController::class, 'simpanPhoto']);
 
 
+    Route::post('/products/create-shipping', [ProductController::class, 'createShipping'])->name('products.create-shipping');
+    Route::post('/products/{product}/confirm-receipt', [ProductController::class, 'confirmReceipt'])->name('products.confirm-receipt');
+    Route::get('/salesShipping', [SalesController::class, 'shipping'])->name('sales.shipping');
+    Route::get('/salesCreateShipping', [SalesController::class, 'createShipping'])->name('sales.createShipping');
+
+
     Route::get('pos', [PosController::class, 'index'])->name('pos.index');
     Route::post('pos/store', [PosController::class, 'store'])->name('pos.store');
     Route::get('/pos/{id}', [PosController::class, 'print'])->name('pos.print');
