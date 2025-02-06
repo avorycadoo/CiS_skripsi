@@ -115,11 +115,23 @@ class ProductController extends Controller
     
     public function confirmReceipt(Product $product)
     {
-        $product->in_order_penjualan = 0; // Reset in_order_penjualan to 0
-        $product->save();
-    
-        return redirect()->route('sales.shipping')->with('success', 'Shipment receipt confirmed.');
+        // Check if there is any stock in order
+        if ($product->in_order_penjualan > 0) {
+            // Decrement the stock by the amount in order
+            $product->stock -= $product->in_order_penjualan;
+
+            // Reset in_order_penjualan to 0
+            $product->in_order_penjualan = 0;
+
+            // Save the updated product
+            $product->save();
+
+            return redirect()->route('sales.shipping')->with('success', 'Shipment receipt confirmed and stock updated.');
+        } else {
+            return redirect()->route('sales.shipping')->with('error', 'No stock in order to confirm.');
+        }
     }
+
 
 
 

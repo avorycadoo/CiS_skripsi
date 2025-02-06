@@ -61,10 +61,10 @@
                 </a>
                 <div id="salesModuleMenu" class="collapse">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="penjualan">
+                        {{-- <a class="collapse-item" href="penjualan">
                             <i class="fas fa-fw fa-chart-line"></i>
                             <span>Nota Penjualan</span>
-                        </a>
+                        </a> --}}
                         <a class="collapse-item" href="sales">
                             <i class="fas fa-fw fa-receipt"></i>
                             <span>Transaction Sales</span>

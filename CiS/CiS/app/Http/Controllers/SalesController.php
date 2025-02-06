@@ -340,15 +340,30 @@ class SalesController extends Controller
                     ];
                 }
 
-                // Update inventory using the model's updateInventory method
-                $sale->updateInventory($cogsMethod, $productsForInventory);
+                // Check the selected shipping method
+                $selectedShippingMethod = detailKonfigurasi::where('name', 'Products are sent by store delivery service')->first();
+                $isDeliveryService = $selectedShippingMethod && $selectedShippingMethod->value == $request->shipping_id;
+
+                // Update inventory only if the shipping method is NOT the delivery service
+                if (!$isDeliveryService) {
+                    // Update inventory using the model's updateInventory method
+                    $sale->updateInventory($cogsMethod, $productsForInventory);
+                }
 
                 // Commit transaction
                 DB::commit();
 
-                return redirect()
-                    ->route('sales.index')
-                    ->with('success', 'Sale has been created successfully');
+                // Handle shipping logic
+                if ($isDeliveryService) {
+                    foreach ($products as $product) {
+                        $purchasedProduct = Product::find($product['product_id']);
+                        $purchasedProduct->in_order_penjualan += $product['quantity'];
+                        $purchasedProduct->save();
+                    }
+                    return redirect()->route('sales.shipping');
+                }
+
+                return redirect()->route('sales.index')->with('success', 'Sale has been created successfully');
 
             } catch (\Exception $e) {
                 DB::rollBack();
@@ -368,6 +383,7 @@ class SalesController extends Controller
                 ->withInput();
         }
     }
+
     /**
      * Display the specified resource.
      */
