@@ -85,12 +85,17 @@ Route::middleware('auth')->group(function () {
     Route::get('product/uploadPhoto/{id}', [ProductImageController::class, 'uploadPhoto'])->name('image.formUploadPhoto');
     Route::post('product/simpanPhoto', [ProductImageController::class, 'simpanPhoto']);
 
-
+    //route buat sales shipping
     Route::post('/products/create-shipping', [ProductController::class, 'createShipping'])->name('products.create-shipping');
     Route::post('/products/{product}/confirm-receipt', [ProductController::class, 'confirmReceipt'])->name('products.confirm-receipt');
     Route::get('/salesShipping', [SalesController::class, 'shipping'])->name('sales.shipping');
     Route::get('/salesCreateShipping', [SalesController::class, 'createShipping'])->name('sales.createShipping');
 
+    //route buat purchase shipping
+    Route::post('/products/create-shipping-purchase', [ProductController::class, 'createShippingPurchase'])->name('products.create-shipping-purchase');
+    Route::post('/products/{product}/confirm-receipt-purchase', [ProductController::class, 'confirmReceiptPurchase'])->name('products.confirm-receipt-purchase');
+    Route::get('/purchaseShipping', [PurchaseController::class, 'shipping'])->name('purchase.shipping');
+    Route::get('/purchaseCreateShipping', [PurchaseController::class, 'createShipping'])->name('purchase.createShipping');
 
     Route::get('pos', [PosController::class, 'index'])->name('pos.index');
     Route::post('pos/store', [PosController::class, 'store'])->name('pos.store');

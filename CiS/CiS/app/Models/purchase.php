@@ -16,29 +16,24 @@ class purchase extends Model
 
     public function updateInventory($cogsMethod, $products)
     {
-        // Get the COGS method name from detailkonfigurasi
-        $cogsMethodName = DB::table('detailkonfigurasi')
-            ->where('id', $cogsMethod)
-            ->value('name');
-
         foreach ($products as $product) {
-            if (strtolower($cogsMethodName) === 'fifo') {
+            if ($cogsMethod === 'fifo') {
                 // Create a new FIFO entry for this purchase
                 ProductFifo::create([
-                    'purchase_id' => $this->id,
-                    'purchase_date' => $this->purchase_date,
-                    'price' => $product['price'],
+                    'product_id' => $product['product_id'],
+                    'purchase_date' => now(),
                     'stock' => $product['quantity'],
-                    'product_id' => $product['product_id']
+                    'price' => $product['price'], // Tambahkan field price
+                    'purchase_id' => $this->id // Tambahkan purchase_id untuk referensi
                 ]);
-
-                // Update product stock
+    
+                // Update total product stock
                 DB::table('product')
                     ->where('id', $product['product_id'])
                     ->increment('stock', $product['quantity']);
-
-            } elseif (strtolower($cogsMethodName) === 'average') {
-                // Average Logic
+    
+            } elseif ($cogsMethod === 'average') {
+                // Untuk average, cukup increment stock saja
                 DB::table('product')
                     ->where('id', $product['product_id'])
                     ->increment('stock', $product['quantity']);

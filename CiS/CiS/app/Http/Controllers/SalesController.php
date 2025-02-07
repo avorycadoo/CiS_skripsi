@@ -118,10 +118,10 @@ class SalesController extends Controller
         return view('sales.retur', compact('salesDetails', 'customers', 'salesByCustomer', 'productsBySale'));
     }
 
-    public function returPenjualan()
-    {
+    // public function returPenjualan()
+    // {
 
-    }
+    // }
 
     public function detail($id)
     {

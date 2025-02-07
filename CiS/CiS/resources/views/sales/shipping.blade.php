@@ -3,7 +3,7 @@
 @section('content')
     <div class="container">
         <h1>Product List</h1>
-        <a href="salesCreateShipping" class="btn btn-primary mb-3">Create Shipping</a>
+        {{-- <a href="salesCreateShipping" class="btn btn-primary mb-3">Create Shipping</a> --}}
         <table class="table">
             <thead>
                 <tr>

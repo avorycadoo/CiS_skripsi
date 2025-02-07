@@ -119,39 +119,40 @@
                     </div>
 
                     <!-- Shipping Section -->
-                    {{-- <h5 class="mt-4">Shipping Cost</h5>
-                    <div class="form-group">
-                        <label for="shipping_cost">Shipping Cost</label>
-                        <input type="number" class="form-control" name="shipping_cost" id="shipping_cost" value="0" min="0" step="0.01">
-                    </div> --}}
-                    <!-- Shipping Section -->
-                    {{-- <h5 class="mt-4">Shipping Information</h5> --}}
-                    {{-- <div class="form-group">
-                        <label for="shipped_date">Shipped Date</label>
-                        <input type="date" class="form-control" name="sales_shipdate" id="shipped_date">
-                    </div> --}}
-
-                    @if ($activeShippings->isNotEmpty())
-                        <div class="form-group mt-4">
-                            <button type="button" class="btn btn-primary" id="addShippingBtn">Add Shipping</button>
+                    <div class="card mt-4 ">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#shippingCollapse">
+                            <h5 class="mb-0">Shipping Options <i class="bi bi-chevron-down"></i></h5>
                         </div>
-                        <div id="shippingSection" style="display: none;">
-                            <h5>Select Shipping:</h5>
-                            @foreach ($activeShippings as $shipping)
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="shipping_id"
-                                        value="{{ $shipping->value }}" id="shipping{{ $shipping->id }}">
-                                    <label class="form-check-label" for="shipping{{ $shipping->id }}">
-                                        {{ $shipping->name }} (Rp.{{ $shipping->value }})
-                                    </label>
-                                </div>
-                            @endforeach
-                            <input type="hidden" name="shipping_cost" id="shipping_cost" value="0">
+                        <div class="collapse" id="shippingCollapse">
+                            <div class="card-body">
+                                <label for="shipped_date">Shipped Date</label>
+                                <input type="date" class="form-control" name="sales_shipdate" id="shipped_date">
+                            </div>
 
+                            @if ($activeShippings->isNotEmpty())
+                                @foreach ($activeShippings as $shipping)
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input shipping-radio" type="radio" name="shipping_id"
+                                            value="{{ $shipping->value }}" id="shipping{{ $shipping->id }}"
+                                            data-name="{{ $shipping->name }}">
+                                        <label class="form-check-label" for="shipping{{ $shipping->id }}">
+                                            {{ $shipping->name }}
+                                        </label>
+                                        <div class="ms-4 mt-2 shipping-value-input" style="display: none;">
+                                            <div class="input-group" style="max-width: 200px;">
+                                                <span class="input-group-text">Rp</span>
+                                                <input type="number" class="form-control"
+                                                    value="{{ $shipping->value }}" min="0" step="1000">
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                                <input type="hidden" name="shipping_cost" id="shipping_cost" value="0">
+                            @else
+                                <p>No active shipping options available.</p>
+                            @endif
                         </div>
-                    @else
-                        <p>No active shipping available.</p>
-                    @endif
+                    </div>
 
                     <!-- Final Price Section -->
                     <h5 class="mt-4">Final Price: <span id="finalPrice">Rp 0.00</span></h5>
@@ -169,12 +170,15 @@
                     </div>
 
                     <!-- COGS Method Section -->
+                    <!-- COGS Method Section -->
                     <div class="form-group">
-                        <label for="payment_methods_id">Select Cogs Method:</label>
+                        <label for="cogs_method">Select Cogs Method:</label>
                         <select class="form-control" name="cogs_method" required>
                             <option value="">Select COGS Method</option>
                             @foreach ($activeCogs as $cogs_method)
-                                <option value="{{ $cogs_method->id }}">{{ $cogs_method->name }}</option>
+                                <option value="{{ strtolower(str_replace('P-', '', $cogs_method->name)) }}">
+                                    {{ $cogs_method->name }}
+                                </option>
                             @endforeach
                         </select>
                     </div>
@@ -334,10 +338,28 @@
             }
 
             // Update total price when shipping is selected
-            const shippingRadios = document.querySelectorAll('input[name="shipping_id"]');
+            const shippingRadios = document.querySelectorAll('.shipping-radio');
             shippingRadios.forEach(radio => {
                 radio.addEventListener('change', function() {
-                    updateTotalPrice(); // Update total price when shipping is selected
+                    // Hide all input fields first
+                    document.querySelectorAll('.shipping-value-input').forEach(input => {
+                        input.style.display = 'none';
+                    });
+
+                    // Show input field for selected radio
+                    if (this.checked) {
+                        const inputDiv = this.closest('.form-check').querySelector(
+                            '.shipping-value-input');
+                        inputDiv.style.display = 'block';
+
+                        // Update the shipping value when input changes
+                        const valueInput = inputDiv.querySelector('input');
+                        valueInput.addEventListener('input', function() {
+                            radio.value = this.value;
+                            updateTotalPrice();
+                        });
+                    }
+                    updateTotalPrice();
                 });
             });
 
@@ -356,8 +378,7 @@
                 // Get selected shipping value
                 const selectedShipping = document.querySelector('input[name="shipping_id"]:checked');
                 const shippingValue = selectedShipping ? parseFloat(selectedShipping.value) : 0;
-                document.getElementById('shipping_cost').value = shippingValue.toFixed(
-                    2);
+                document.getElementById('shipping_cost').value = shippingValue.toFixed(2);
 
                 const finalPrice = totalPrice + shippingValue;
 

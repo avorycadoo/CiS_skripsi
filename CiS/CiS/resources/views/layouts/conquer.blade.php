@@ -103,6 +103,11 @@
                             <span>Transaction Purchase</span>
                         </a>
 
+                        <a class="collapse-item" href="purchaseShipping">
+                            <i class="fas fa-fw fa-truck"></i>
+                            <span>Shipping</span>
+                        </a>
+
                         <a class="collapse-item" href="purchaseKonfigurasi">
                             <i class="fas fa-fw fa-receipt"></i>
                             <span>Purchase Configuration</span>

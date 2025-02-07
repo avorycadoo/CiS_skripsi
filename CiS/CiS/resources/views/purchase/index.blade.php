@@ -1,56 +1,86 @@
 @extends('layouts.conquer')
 
 @section('content')
-    <div class="page-content">
-        <div class="row">
-            <div class="col-md-12">
-                <h2 class="text-center mb-4">Transactions Purchase</h2>
-                <div class="d-flex justify-content-end mb-3">
-                    <a href="{{ route('purchase.create') }}" class="btn btn-info"
-                        style="background-color: #000000; color: white; border: none; transition: background-color 0.3s;">
-                        + New Purchase
-                    </a>
-                </div>
-                <div class="row">
-                    @foreach ($datas as $d)
-                        <div class="col-md-4 mb-4">
-                            <div class="card shadow-sm h-100">
-                                <!-- Purchase Details -->
-                                <div class="card-body">
-                                    <h5 class="card-title text-center">{{ $d->noNota }}</h5>
-                                    <p class="card-text text-center">
-                                        <strong>Total Price:</strong> Rp {{ number_format($d->total_price, 0, ',', '.') }}
-                                    </p>
-                                    <p class="card-text text-center">
-                                        <strong>Payment Method:</strong> {{ $d->paymentMethod->name ?? 'N/A' }}
-                                    </p>
-                                    <p class="card-text text-center">
-                                        <strong>Supplier:</strong> {{ $d->supplier->company_name ?? 'N/A' }}
-                                    </p>
-                                    <p class="text-center text-muted">
-                                        <small>Purchase Date: {{ $d->purchase_date }}</small><br>
-                                        <small>Created: {{ $d->created_at }}</small><br>
-                                        <small>Updated: {{ $d->updated_at }}</small>
-                                    </p>
-                                    <!-- Action Buttons -->
-                                    <div class="text-center">
-                                        <a class="btn btn-warning btn-sm"
-                                            style="background-color: rgb(0, 0, 0); color: white; margin-right: 5px;"
-                                            href="{{ route('purchase.detail', $d->id) }}">Detail</a>
-                                        <form method="POST" action="{{ route('purchase.destroy', $d->id) }}"
-                                            style="display: inline;">
-                                            @csrf
-                                            @method('DELETE')
-                                            <input type="submit" value="Delete" class="btn btn-danger btn-sm"
-                                                onclick="return confirm('Are you sure to delete {{ $d->id }} - {{ $d->noNota }}?');">
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    @endforeach
+    <div class="container mt-5">
+        <!-- Flash Message Section -->
+        @if (session('success'))
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                {{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
+        <!-- Header Section -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Purchase List</h2>
+            <a href="{{ route('purchase.create') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Create New Purchase
+            </a>
+        </div>
+
+        <!-- Purchase List Table -->
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Invoice</th>
+                                <th>Supplier</th>
+                                <th>Purchase Date</th>
+                                <th>Total Price</th>
+                                <th>Payment Method</th>
+                                <th>Warehouse</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($datas as $purchase)
+                                <tr>
+                                    <td>{{ $purchase->noNota }}</td>
+                                    <td>{{ $purchase->supplier->company_name }}</td>
+                                    <td>{{ $purchase->purchase_date }}</td>
+                                    <td>Rp {{ number_format($purchase->total_price, 0, ',', '.') }}</td>
+                                    <td>{{ $purchase->paymentMethod->name }}</td>
+                                    <td>{{ $purchase->warehouse ? $purchase->warehouse->name : 'Directly in store' }}</td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ route('purchase.show', $purchase->id) }}"
+                                                class="btn btn-info btn-sm" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            {{-- <a href="{{ route('purchase.edit', $purchase->id) }}"
+                                                class="btn btn-warning btn-sm" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a> --}}
+                                            <!-- Add delete button if needed -->
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="text-center">No purchase records found.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
+@endsection
+
+@section('javascript')
+    <script>
+        // Auto dismiss alert after 5 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(function() {
+                const alerts = document.querySelectorAll('.alert');
+                alerts.forEach(function(alert) {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                });
+            }, 5000);
+        });
+    </script>
 @endsection

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Categories;
 use App\Models\Product;
 use App\Models\Product_Image;
+use App\Models\ProductFifo;
 use App\Models\Suppliers;
 use App\Models\Warehouse;
 use Illuminate\Http\Request;
@@ -94,31 +95,98 @@ class ProductController extends Controller
             'quantity_shipped' => 'required|integer|min:1',
         ]);
 
+        $product = Product::find($validatedData['product_id']);
+        $productFifoEntries = ProductFifo::where('product_id', $validatedData['product_id'])
+            ->where('stock', '>', 0)
+            ->orderBy('purchase_date', 'asc')
+            ->get();
+
+        $quantityToShip = $validatedData['quantity_shipped'];
+
+        // Check if there are enough items in stock
+        if ($product->stock < $quantityToShip) {
+            return redirect()->route('sales.shipping')->with('error', 'Insufficient stock.');
+        }
+
+        // Reduce stock in FIFO order
+        foreach ($productFifoEntries as $fifoEntry) {
+            if ($quantityToShip <= 0) break;
+
+            $reduceQuantity = min($fifoEntry->stock, $quantityToShip);
+            $fifoEntry->stock -= $reduceQuantity;
+            $fifoEntry->save();
+
+            $quantityToShip -= $reduceQuantity;
+        }
+
+        // Update main product stock and in_order
+        $product->stock -= $validatedData['quantity_shipped'];
+        $product->in_order_penjualan -= $validatedData['quantity_shipped'];
+        $product->save();
+
+        return redirect()->route('sales.shipping')->with('success', 'Shipment created successfully.');
+    }
+
+    public function confirmReceipt(Product $product)
+    {
+        $productFifoEntries = ProductFifo::where('product_id', $product->id)
+            ->where('stock', '>', 0)
+            ->orderBy('purchase_date', 'asc')
+            ->get();
+
+        $quantityToReduce = $product->in_order_penjualan;
+
+        // Reduce stock in FIFO order
+        foreach ($productFifoEntries as $fifoEntry) {
+            if ($quantityToReduce <= 0) break;
+
+            $reduceQuantity = min($fifoEntry->stock, $quantityToReduce);
+            $fifoEntry->stock -= $reduceQuantity;
+            $fifoEntry->save();
+
+            $quantityToReduce -= $reduceQuantity;
+        }
+
+        // Reset main product stock and in_order
+        $product->stock -= $product->in_order_penjualan;
+        $product->in_order_penjualan = 0;
+        $product->save();
+
+        return redirect()->route('sales.shipping')->with('success', 'Shipment receipt confirmed and stock updated.');
+    }
+
+    public function createShippingPurchase(Request $request)
+    {
+        $validatedData = $request->validate([
+            'product_id' => 'required|exists:product,id',
+            'quantity_shipped' => 'required|integer|min:1',
+        ]);
+
         
 
         $product = Product::find($validatedData['product_id']);
         
         // Check if there are any orders to ship
         if ($product->in_order_penjualan <= 0) {
-            return redirect()->route('sales.shipping')->with('error', 'No orders pending for this product.');
+            return redirect()->route('purchase.shipping')->with('error', 'No orders pending for this product.');
         }
         // Subtract quantity_shipped from stock
-        $product->stock -= $validatedData['quantity_shipped'];
+        $product->stock += $validatedData['quantity_shipped'];
         
         // Subtract quantity_shipped from in_order
         $product->in_order_penjualan -= $validatedData['quantity_shipped'];
         
         $product->save();
 
-        return redirect()->route('sales.shipping')->with('success', 'Shipment created successfully.');
+        return redirect()->route('purchase.shipping')->with('success', 'Shipment created successfully.');
     }
     
-    public function confirmReceipt(Product $product)
+    public function confirmReceiptPurchase(Product $product)
     {
         // Check if there is any stock in order
         if ($product->in_order_penjualan > 0) {
             // Decrement the stock by the amount in order
-            $product->stock -= $product->in_order_penjualan;
+            $product->stock += $product->in_order_penjualan;
 
             // Reset in_order_penjualan to 0
             $product->in_order_penjualan = 0;
@@ -126,12 +194,11 @@ class ProductController extends Controller
             // Save the updated product
             $product->save();
 
-            return redirect()->route('sales.shipping')->with('success', 'Shipment receipt confirmed and stock updated.');
+            return redirect()->route('purchase.shipping')->with('success', 'Shipment receipt confirmed and stock updated.');
         } else {
-            return redirect()->route('sales.shipping')->with('error', 'No stock in order to confirm.');
+            return redirect()->route('purchase.shipping')->with('error', 'No stock in order to confirm.');
         }
     }
-
 
 
 

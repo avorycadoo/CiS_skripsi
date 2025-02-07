@@ -9,11 +9,11 @@ class ProductFifo extends Model
     protected $table = 'product_fifo';
     public $timestamps = false;
     protected $fillable = [
-        'purchase_id',
+        'product_id',
         'purchase_date',
-        'price',
         'stock',
-        'product_id'
+        'price',
+        'purchase_id'
     ];
 
     public function purchase()

@@ -22,6 +22,18 @@ class PurchaseController extends Controller
         return view('purchase.index', ['datas' => $purchases]);
     }
 
+    public function shipping()
+    {
+        $products = Product::all();
+        return view('purchase.shipping', compact('products'));
+    }
+
+    public function createShipping()
+    {
+        $products = Product::all();
+        return view('purchase.createShipping', compact('products'));
+    }
+
     /**
      * Show the form for creating a new resource.
      */
@@ -188,65 +200,69 @@ class PurchaseController extends Controller
      */
     public function store(Request $request)
     {
-        // Generate invoice number
-        $noNota = 'PUR' . str_pad(DB::table('purchase')->max('id') + 1, 4, '0', STR_PAD_LEFT);
+        try {
+            $noNota = 'PUR' . str_pad(DB::table('purchase')->max('id') + 1, 4, '0', STR_PAD_LEFT);
+            
+            $warehouseId = null;
+            if ($request->input('warehouse_option') === 'multi') {
+                $warehouseId = $request->input('warehouse_id');
+            }
 
-        // Determine warehouse_id based on selected option  
-        $warehouseId = null;
-        if ($request->input('warehouse_option') === 'multi') {
-            $warehouseId = $request->input('warehouse_id');
-        }
-        // Insert into purchase table
-        $purchaseId = DB::table('purchase')->insertGetId([
-            'noNota' => $noNota,
-            'total_price' => $request->input('final_price'),
-            'purchase_date' => $request->input('purchase_date'),
-            'receive_date' => $request->input('receive_date'),
-            'shipping_cost' => $request->input('shipping_cost', 0),
-            'payment_methods_id' => $request->input('payment_methods_id'),
-            'suppliers_id' => $request->input('supplier_id'),
-            'warehouse_id' => $warehouseId,
-        ]);
-
-        $products = json_decode($request->input('products'), true);
-        foreach ($products as $product) {
-            DB::table('purchase_detail')->insert([
-                'product_id' => $product['product_id'],
-                'purchase_id' => $purchaseId,
-                'subtotal_price' => $product['price'] * $product['quantity'], // Calculate subtotal price for the product
-                'quantity' => $product['quantity'],
+            // Insert purchase
+            $purchaseId = DB::table('purchase')->insertGetId([
+                'noNota' => $noNota,
+                'total_price' => $request->input('final_price'),
+                'purchase_date' => $request->input('purchase_date'),
+                'receive_date' => $request->input('receive_date'),
+                'shipping_cost' => $request->input('shipping_cost', 0),
+                'payment_methods_id' => $request->input('payment_methods_id'),
+                'suppliers_id' => $request->input('supplier_id'),
+                'warehouse_id' => $warehouseId,
             ]);
 
-            // If multi-warehouse is selected, update product_has_warehouse
-            if ($request->input('warehouse_option') === 'multi' && $warehouseId) {
-                // Check if product already exists in this warehouse
-                $existingRecord = DB::table('product_has_warehouse')
-                    ->where('product_id', $product['product_id'])
-                    ->where('warehouse_id', $warehouseId)
-                    ->first();
+            $products = json_decode($request->input('products'), true);
+            foreach ($products as $product) {
+                // Insert purchase detail
+                DB::table('purchase_detail')->insert([
+                    'product_id' => $product['product_id'],
+                    'purchase_id' => $purchaseId,
+                    'subtotal_price' => $product['price'] * $product['quantity'],
+                    'quantity' => $product['quantity'],
+                ]);
 
-                if ($existingRecord) {
-                    // Update existing record
-                    DB::table('product_has_warehouse')
+                // Handle warehouse stock if multi-warehouse
+                if ($request->input('warehouse_option') === 'multi' && $warehouseId) {
+                    $existingRecord = DB::table('product_has_warehouse')
                         ->where('product_id', $product['product_id'])
                         ->where('warehouse_id', $warehouseId)
-                        ->increment('stock', $product['quantity']);
-                } else {
-                    // Create new record
-                    DB::table('product_has_warehouse')->insert([
-                        'product_id' => $product['product_id'],
-                        'warehouse_id' => $warehouseId,
-                        'stock' => $product['quantity']
-                    ]);
+                        ->first();
+
+                    if ($existingRecord) {
+                        DB::table('product_has_warehouse')
+                            ->where('product_id', $product['product_id'])
+                            ->where('warehouse_id', $warehouseId)
+                            ->increment('stock', $product['quantity']);
+                    } else {
+                        DB::table('product_has_warehouse')->insert([
+                            'product_id' => $product['product_id'],
+                            'warehouse_id' => $warehouseId,
+                            'stock' => $product['quantity']
+                        ]);
+                    }
                 }
             }
+
+            // Update inventory dengan COGS method yang sudah diformat
+            $purchase = Purchase::find($purchaseId);
+            $purchase->updateInventory($request->input('cogs_method'), $products);
+
+            return redirect()->route('purchase.index')->with('success', 'Purchase has been created successfully');
+        
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Failed to create purchase: ' . $e->getMessage())
+                ->withInput();
         }
-
-        // Call the updateInventory function
-        $purchase = Purchase::find($purchaseId); // Retrieve the Purchase model instance
-        $purchase->updateInventory($request->input('cogs_method'), $products); // Call the updateInventory method
-
-        return redirect()->route("purchase.index")->with('status', "Horray, Your new purchase data is already inserted");
     }
 
     /**

@@ -1,53 +1,68 @@
 @extends('layouts.conquer')
 
 @section('content')
-    <div class="page-content">
-        <div class="row">
-            <div class="col-md-12">
-                <h2 class="text-center mb-4">Transactions Sales</h2>
-                <div class="d-flex justify-content-end mb-3">
-                    <a href="{{ route('sales.create') }}" class="btn btn-info"
-                        style="background-color: #040404; color: white; border: none; transition: background-color 0.3s;">
-                        + New Transactions
-                    </a>
-                </div>
-                <div class="row">
-                    @foreach ($datas as $d)
-                        <div class="col-md-4 mb-4">
-                            <div class="card shadow-sm h-100">
-                                <!-- Sales Details -->
-                                <div class="card-body">
-                                    <h5 class="card-title text-center">{{ $d->noNota }}</h5>
-                                    <p class="card-text text-center">
-                                        <strong>Total Price:</strong> Rp {{ number_format($d->total_price, 0, ',', '.') }}
-                                    </p>
-                                    <p class="card-text text-center">
-                                        <strong>Payment Method:</strong> {{ $d->paymentMethod->name ?? 'N/A' }}
-                                    </p>
-                                    <p class="card-text text-muted text-center">{{ $d->shipped_date }}</p>
-                                    <p class="text-center text-muted">
-                                        <small>Created: {{ $d->created_at }}</small><br>
-                                        <small>Updated: {{ $d->updated_at }}</small>
-                                    </p>
-                                    <!-- Action Buttons -->
-                                    <div class="text-center">
-                                        <a class="btn btn-warning btn-sm"
-                                            style="background-color: rgb(9, 9, 9); color: white; margin-right: 5px;"
-                                            href="{{ route('sales.detail', $d->id) }}">Detail</a>
-                                        <form method="POST" action="{{ route('sales.destroy', $d->id) }}"
-                                            style="display: inline;">
-                                            @csrf
-                                            @method('DELETE')
-                                            <input type="submit" value="Delete" class="btn btn-danger btn-sm"
-                                                onclick="return confirm('Are you sure to delete {{ $d->id }} - {{ $d->noNota }}?');">
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    @endforeach
+    <div class="container mt-5">
+        <!-- Header Section -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Sales List</h2>
+            <a href="{{ route('sales.create') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Create New Sale
+            </a>
+        </div>
+
+        <!-- Sales List Table -->
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Invoice</th>
+                                <th>Customer</th>
+                                <th>Sales Date</th>
+                                <th>Total Price</th>
+                                <th>Payment Method</th>
+                                <th>Shipped Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($datas as $sale)
+                                <tr>
+                                    <td>{{ $sale->noNota }}</td>
+                                    <td>{{ $sale->customer->name }}</td>
+                                    <td>{{ $sale->sales_date }}</td>
+                                    <td>Rp {{ number_format($sale->total_price, 0, ',', '.') }}</td>
+                                    <td>{{ $sale->paymentMethod->name ?? 'N/A' }}</td>
+                                    <td>{{ $sale->shipped_date }}</td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ route('sales.detail', $sale->id) }}" class="btn btn-info btn-sm"
+                                                title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            {{-- <form method="POST" action="{{ route('sales.destroy', $sale->id) }}"
+                                                style="display: inline;">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn btn-danger btn-sm" title="Delete"
+                                                    onclick="return confirm('Are you sure to delete {{ $sale->id }} - {{ $sale->noNota }}?');">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            </form> --}}
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="text-center">No sales records found.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
+    </div>
     </div>
 @endsection
