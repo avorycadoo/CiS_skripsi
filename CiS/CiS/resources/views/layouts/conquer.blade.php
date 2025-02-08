@@ -134,6 +134,12 @@
                             <i class="fas fa-fw fa-receipt"></i>
                             <span>Product</span>
                         </a>
+
+                        <a class="collapse-item" href="profitLoss">
+                            <i class="fas fa-fw fa-receipt"></i>
+                            <span>Profit Loss</span>
+                        </a>
+
                         <a class="collapse-item" href="{{ route('categories.index') }}">
                             <i class="fas fa-fw fa-user"></i>
                             <span>Category</span>

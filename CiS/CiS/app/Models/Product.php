@@ -25,14 +25,14 @@ class Product extends Model
         return $this->belongsTo(Product_Image::class, 'product_image_id', 'id'); // Kolom foreign key dan primary key
     }
 
-    public function productCategory()
+    public function categories()
     {
-        return $this->belongsTo(Categories::class, 'categories_id', 'id'); // Kolom foreign key dan primary key
+        return $this->belongsTo(Categories::class, 'categories_id');
     }
 
-    public function productSuppliers()
+    public function suppliers()
     {
-        return $this->belongsTo(Suppliers::class, 'suppliers_id', 'id'); // Kolom foreign key dan primary key
+        return $this->belongsTo(Suppliers::class, 'suppliers_id');
     }
 
     public function salesDetails()

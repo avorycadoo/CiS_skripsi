@@ -32,6 +32,25 @@ class ProductController extends Controller
         ]);
     }
 
+    public function profitLoss()
+    {
+        $products = Product::select(
+            'product.*',
+            DB::raw('(price - cost) as profit_per_unit'),
+            DB::raw('(price - cost) * stock as total_profit_potential')
+        )
+        ->with(['categories', 'suppliers'])
+        ->get()
+        ->map(function ($product) {
+            $product->profit_margin_percentage = $product->cost > 0 
+                ? round((($product->price - $product->cost) / $product->cost) * 100, 2)
+                : 0;
+            return $product;
+        });
+
+        return view('product.labaRugi', compact('products'));
+    }
+
     /**
      * Show the form for creating a new resource.
      */
@@ -161,43 +180,31 @@ class ProductController extends Controller
             'product_id' => 'required|exists:product,id',
             'quantity_shipped' => 'required|integer|min:1',
         ]);
-
-        
-
+    
         $product = Product::find($validatedData['product_id']);
         
-        // Check if there are any orders to ship
         if ($product->in_order_penjualan <= 0) {
             return redirect()->route('purchase.shipping')->with('error', 'No orders pending for this product.');
         }
-        // Subtract quantity_shipped from stock
+    
         $product->stock += $validatedData['quantity_shipped'];
-        
-        // Subtract quantity_shipped from in_order
         $product->in_order_penjualan -= $validatedData['quantity_shipped'];
-        
         $product->save();
-
+    
         return redirect()->route('purchase.shipping')->with('success', 'Shipment created successfully.');
     }
     
     public function confirmReceiptPurchase(Product $product)
     {
-        // Check if there is any stock in order
         if ($product->in_order_penjualan > 0) {
-            // Decrement the stock by the amount in order
             $product->stock += $product->in_order_penjualan;
-
-            // Reset in_order_penjualan to 0
             $product->in_order_penjualan = 0;
-
-            // Save the updated product
             $product->save();
-
+            
             return redirect()->route('purchase.shipping')->with('success', 'Shipment receipt confirmed and stock updated.');
-        } else {
-            return redirect()->route('purchase.shipping')->with('error', 'No stock in order to confirm.');
-        }
+        } 
+        
+        return redirect()->route('purchase.shipping')->with('error', 'No stock in order to confirm.');
     }
 
 

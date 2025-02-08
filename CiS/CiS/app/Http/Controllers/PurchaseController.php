@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\detailKonfigurasi;
 use App\Models\Payment_Methods;
 use App\Models\Product;
 use App\Models\purchase;
@@ -201,19 +202,40 @@ class PurchaseController extends Controller
     public function store(Request $request)
     {
         try {
+            // Add debugging
+            \Log::info('Shipping ID from request: ' . $request->shipping_id);
+            
+            $selectedShippingMethod = detailKonfigurasi::where('name', 'The product is shipped by the supplier')->first();
+            
+            // Add debugging
+            \Log::info('Selected shipping method:', [
+                'method' => $selectedShippingMethod ? $selectedShippingMethod->toArray() : null
+            ]);
+            
+            $isSupplierShipping = $selectedShippingMethod && $selectedShippingMethod->value == $request->shipping_id;
+            
+            // Add debugging
+            \Log::info('Is supplier shipping: ' . ($isSupplierShipping ? 'true' : 'false'));
+    
+            // Set receive_date based on shipping method
+            $receiveDate = $isSupplierShipping ? null : now();
+            
+            // Add debugging
+            \Log::info('Receive date: ' . ($receiveDate ? $receiveDate : 'null'));
+    
             $noNota = 'PUR' . str_pad(DB::table('purchase')->max('id') + 1, 4, '0', STR_PAD_LEFT);
             
             $warehouseId = null;
             if ($request->input('warehouse_option') === 'multi') {
                 $warehouseId = $request->input('warehouse_id');
             }
-
+    
             // Insert purchase
             $purchaseId = DB::table('purchase')->insertGetId([
                 'noNota' => $noNota,
                 'total_price' => $request->input('final_price'),
                 'purchase_date' => $request->input('purchase_date'),
-                'receive_date' => $request->input('receive_date'),
+                'receive_date' => $receiveDate,
                 'shipping_cost' => $request->input('shipping_cost', 0),
                 'payment_methods_id' => $request->input('payment_methods_id'),
                 'suppliers_id' => $request->input('supplier_id'),
@@ -252,13 +274,37 @@ class PurchaseController extends Controller
                 }
             }
 
-            // Update inventory dengan COGS method yang sudah diformat
-            $purchase = Purchase::find($purchaseId);
-            $purchase->updateInventory($request->input('cogs_method'), $products);
+            if (!$isSupplierShipping) {
+                // Update inventory with the selected COGS method
+                $purchase = Purchase::find($purchaseId);
+                $purchase->updateInventory($request->input('cogs_method'), $products);
+            }
+
+            if ($isSupplierShipping) {
+                foreach ($products as $product) {
+                    $purchasedProduct = Product::find($product['product_id']);
+                    $purchasedProduct->in_order_penjualan += $product['quantity'];
+                    $purchasedProduct->save();
+                }
+
+                // Update receive_date after shipping all stock
+                DB::table('purchase')
+                ->where('id', $purchaseId)
+                ->update(['receive_date' => now()]);
+                
+                return redirect()->route('purchase.shipping');
+            }
 
             return redirect()->route('purchase.index')->with('success', 'Purchase has been created successfully');
+
+            // Update inventory dengan COGS method yang sudah diformat
+            // $purchase = Purchase::find($purchaseId);
+            // $purchase->updateInventory($request->input('cogs_method'), $products);
+
+            // return redirect()->route('purchase.index')->with('success', 'Purchase has been created successfully');
         
         } catch (\Exception $e) {
+            \Log::error('Purchase creation error: ' . $e->getMessage());
             return redirect()->back()
                 ->with('error', 'Failed to create purchase: ' . $e->getMessage())
                 ->withInput();

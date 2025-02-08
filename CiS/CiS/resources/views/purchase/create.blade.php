@@ -36,11 +36,11 @@
                     </div>
 
                     <!-- Receive Date Section -->
-                    <div class="form-group">
+                    {{-- <div class="form-group">
                         <label for="receive_date">Receive Date</label>
                         <input type="date" class="form-control" name="receive_date" required>
                         <small class="form-text text-muted">Please select the date of receiving the products.</small>
-                    </div>
+                    </div> --}}
 
                     <div class="form-group">
                         <label for="warehouse_selection">Select Warehouse Option:</label><br>
