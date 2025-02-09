@@ -126,9 +126,9 @@
                         option.value = sale.id; // Use sale.id for sales_id
                         option.textContent = sale.noNota;
                         option.setAttribute('data-sales-id', sale
-                            .id); // Store sales_id in data attribute
+                        .id); // Store sales_id in data attribute
                         option.setAttribute('data-date', sale.date.split(' ')[
-                            0]); // Store date in data attribute
+                        0]); // Store date in data attribute
                         invoiceSelect.appendChild(option);
                     });
                 }
@@ -177,6 +177,16 @@
                 document.getElementById('total_quantity').value = '';
                 document.getElementById('total_price').value = '';
 
+                // Reset any previous error messages
+                var returDescriptionInput = document.getElementById('retur_desc');
+                var submitButton = document.querySelector('button[type="submit"]');
+                var maxReturnLabel = document.getElementById('max_return_label');
+                maxReturnLabel.innerHTML = 'Maximum Return Quantity: <span id="max_return_value">0</span>';
+                returDescriptionInput.value = ''; // Clear previous description
+                returDescriptionInput.disabled = false; // Enable description input
+                returDescriptionInput.placeholder = 'Enter return description'; // Reset placeholder
+                submitButton.disabled = false;
+
                 // Find the selected product's details
                 if (products[salesId]) {
                     var selectedProduct = products[salesId].find(function(detail) {
@@ -189,9 +199,9 @@
                     // Update total quantity and price field if the product is found
                     if (selectedProduct) {
                         document.getElementById('total_quantity').value = selectedProduct
-                            .total_quantity; // Set total quantity
+                        .total_quantity; // Set total quantity
                         document.getElementById('total_price').value = selectedProduct.product
-                            .price; // Set price from product
+                        .price; // Set price from product
 
                         // Fetch maximum return quantity for the selected product
                         fetch(`/get-product-max-return?product_id=${selectedProductId}`)
@@ -203,24 +213,51 @@
                                     // Ensure maksimum_retur is a valid number
                                     var maksimumRetur = parseFloat(data.maksimum_retur);
                                     console.log("Maximum Return Quantity from Product:",
-                                        maksimumRetur); // Debugging line
+                                    maksimumRetur); // Debugging line
 
                                     if (isNaN(maksimumRetur) || maksimumRetur < 0) {
                                         maksimumRetur = 0; // Fallback to 0 if invalid
+                                    }
+
+                                    // Check if maksimum_retur is 0
+                                    if (maksimumRetur === 0) {
+                                        // Disable form submission and show error message
+                                        var returDescriptionInput = document.getElementById(
+                                            'retur_desc');
+                                        var submitButton = document.querySelector(
+                                            'button[type="submit"]');
+                                        var maxReturnLabel = document.getElementById(
+                                        'max_return_label');
+
+                                        maxReturnLabel.innerHTML =
+                                            '<span class="text-danger">The product cannot be returned</span>';
+                                        returDescriptionInput.value = ''; // Clear the description
+                                        returDescriptionInput.placeholder =
+                                            'The product cannot be returned';
+                                        returDescriptionInput.disabled = true;
+                                        submitButton.disabled = true;
+
+                                        // Reset other fields
+                                        document.getElementById('return_quantity').value = '';
+                                        document.getElementById('refund_amount').value = '';
+                                        document.getElementById('max_return_quantity').value = 0;
+                                        document.getElementById('max_return_value').textContent = '0';
+
+                                        return; // Stop further processing
                                     }
 
                                     // Update the maximum return quantity based on total_quantity and maksimum_retur
                                     var totalQuantity = parseFloat(selectedProduct.total_quantity);
                                     var maxReturnQuantity = Math.min(totalQuantity, maksimumRetur);
                                     console.log("Calculated Max Return Quantity:",
-                                        maxReturnQuantity); // Debugging line
+                                    maxReturnQuantity); // Debugging line
                                     document.getElementById('max_return_quantity').value =
                                         maxReturnQuantity; // Store max return quantity
                                     document.getElementById('max_return_value').textContent =
                                         maxReturnQuantity; // Display max return quantity
                                 } else {
                                     console.error("Error fetching maximum return quantity:", data
-                                        .error);
+                                    .error);
                                 }
                             })
                             .catch(error => console.error("Error:", error));
@@ -228,21 +265,20 @@
                 }
             });
 
-
             // Update refund amount when return quantity is changed
             const returnQuantityInput = document.getElementById('return_quantity');
             const maxReturnQuantityInput = document.getElementById(
-                'max_return_quantity'); // Get the max return quantity input
+            'max_return_quantity'); // Get the max return quantity input
             const maxReturnLabel = document.getElementById(
-                'max_return_value'); // Get the span to display max return quantity
+            'max_return_value'); // Get the span to display max return quantity
 
             if (returnQuantityInput) {
                 returnQuantityInput.addEventListener('input', function() {
                     var returnQuantity = parseFloat(this.value) || 0; // Get the return quantity
                     var totalPrice = parseFloat(document.getElementById('total_price').value) ||
-                        0; // Get the total price
+                    0; // Get the total price
                     var maxReturnQuantity = parseFloat(maxReturnQuantityInput.value) ||
-                        0; // Get the maximum return quantity
+                    0; // Get the maximum return quantity
 
                     // Update the displayed maximum return quantity
                     maxReturnLabel.textContent = maxReturnQuantity;
@@ -259,12 +295,11 @@
 
                     // Update the refund amount field
                     document.getElementById('refund_amount').value = refundAmount.toFixed(
-                        2); // Format to 2 decimal places
+                    2); // Format to 2 decimal places
                 });
             } else {
                 console.error("Element with ID 'return_quantity' not found.");
             }
-
         });
     </script>
 @endsection

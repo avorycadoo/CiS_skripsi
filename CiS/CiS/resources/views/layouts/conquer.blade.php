@@ -35,7 +35,7 @@
         <ul style="background: rgb(70, 5, 5); padding-top: 20px;"
             class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
             <!-- Sidebar - Brand -->
-            <a class="sidebar-brand d-flex align-items-center justify-content-center" href="index.html">
+            <a class="sidebar-brand d-flex align-items-center justify-content-center" href="/">
                 <div class="sidebar-brand-icon rotate-n-15">
                     <i class="fas fa-laugh-wink"></i>
                 </div>
@@ -56,7 +56,7 @@
             <li class="nav-item">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#salesModuleMenu"
                     aria-expanded="false" aria-controls="salesModuleMenu">
-                    <i class="fas fa-fw fa-tachometer-alt"></i>
+                    <i class="fas fa-fw fa-cash-register"></i>
                     <span>Modul Penjualan</span>
                 </a>
                 <div id="salesModuleMenu" class="collapse">
@@ -66,7 +66,7 @@
                             <span>Nota Penjualan</span>
                         </a> --}}
                         <a class="collapse-item" href="sales">
-                            <i class="fas fa-fw fa-receipt"></i>
+                            <i class="fas fa-fw fa-file-invoice-dollar"></i>
                             <span>Transaction Sales</span>
                         </a>
 
@@ -76,12 +76,12 @@
                         </a>
 
                         <a class="collapse-item" href="salesKonfigurasi">
-                            <i class="fas fa-fw fa-receipt"></i>
+                            <i class="fas fa-fw fa-cogs"></i>
                             <span>Sales Configurations</span>
                         </a>
 
                         <a class="collapse-item" href="salesRetur">
-                            <i class="fas fa-fw fa-receipt"></i>
+                            <i class="fas fa-fw fa-undo-alt"></i>
                             <span>Sales Return</span>
                         </a>
 
@@ -92,14 +92,14 @@
             <li class="nav-item active">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#purchaseModuleMenu"
                     aria-expanded="false" aria-controls="purchaseModuleMenu">
-                    <i class="fas fa-fw fa-tachometer-alt"></i>
+                    <i class="fas fa-fw fa-shopping-cart"></i>
                     <span>Modul Pembelian</span>
                 </a>
 
                 <div id="purchaseModuleMenu" class="collapse">
                     <div class="bg-white py-2 collapse-inner rounded">
                         <a class="collapse-item" href="purchase">
-                            <i class="fas fa-fw fa-receipt"></i>
+                            <i class="fas fa-fw fa-file-invoice"></i>
                             <span>Transaction Purchase</span>
                         </a>
 
@@ -109,12 +109,12 @@
                         </a>
 
                         <a class="collapse-item" href="purchaseKonfigurasi">
-                            <i class="fas fa-fw fa-receipt"></i>
+                            <i class="fas fa-fw fa-cogs"></i>
                             <span>Purchase Configuration</span>
                         </a>
 
                         <a class="collapse-item" href="purchaseRetur">
-                            <i class="fas fa-fw fa-receipt"></i>
+                            <i class="fas fa-fw fa-undo-alt"></i>
                             <span>Purchase Return</span>
                         </a>
 
@@ -125,36 +125,36 @@
             <li class="nav-item">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#inventoriesMenu"
                     aria-expanded="false" aria-controls="inventoriesMenu">
-                    <i class="fas fa-fw fa-cog"></i>
+                    <i class="fas fa-fw fa-warehouse"></i>
                     <span>Modul Inventory</span>
                 </a>
                 <div id="inventoriesMenu" class="collapse">
                     <div class="bg-white py-2 collapse-inner rounded">
                         <a class="collapse-item" href="product">
-                            <i class="fas fa-fw fa-receipt"></i>
+                            <i class="fas fa-fw fa-box-open"></i>
                             <span>Product</span>
                         </a>
 
                         <a class="collapse-item" href="profitLoss">
-                            <i class="fas fa-fw fa-receipt"></i>
+                            <i class="fas fa-fw fa-chart-line"></i>
                             <span>Profit Loss</span>
                         </a>
 
                         <a class="collapse-item" href="{{ route('categories.index') }}">
-                            <i class="fas fa-fw fa-user"></i>
+                            <i class="fas fa-fw fa-tags"></i>
                             <span>Category</span>
                         </a>
                         <a class="collapse-item" href="{{ route('warehouse.index') }}">
-                            <i class="fas fa-fw fa-user"></i>
+                            <i class="fas fa-fw fa-warehouse"></i>
                             <span>Warehouse</span>
                         </a>
                         <a class="collapse-item" href="{{ route('suppliers.index') }}">
-                            <i class="fas fa-fw fa-users"></i>
+                            <i class="fas fa-fw fa-truck"></i>
                             <span>Suppliers</span>
                         </a>
 
                         <a class="collapse-item" href="{{ route('warehouse.konfigurasi') }}">
-                            <i class="fas fa-fw fa-receipt"></i>
+                            <i class="fas fa-fw fa-cogs"></i>
                             <span>Warehouse Configurations</span>
                         </a>
                     </div>
@@ -178,7 +178,7 @@
                             <span>Data Employee</span>
                         </a>
                         <a class="collapse-item" href="{{ route('companies.index') }}">
-                            <i class="fas fa-fw fa-users"></i>
+                            <i class="fas fa-fw fa-building"></i>
                             <span>Companies</span>
                         </a>
                     </div>
@@ -202,13 +202,13 @@
             </div>
 
             <!-- Sidebar Message -->
-            <div class="sidebar-card d-none d-lg-flex">
+            {{-- <div class="sidebar-card d-none d-lg-flex">
                 <img class="sidebar-card-illustration mb-2" src="img/undraw_rocket.svg" alt="...">
                 <p class="text-center mb-2"><strong>SB Admin Pro</strong> is packed with premium features, components,
                     and more!</p>
                 <a class="btn btn-success btn-sm" href="https://startbootstrap.com/theme/sb-admin-pro">Upgrade to
                     Pro!</a>
-            </div>
+            </div> --}}
 
         </ul>
         <!-- End of Sidebar -->

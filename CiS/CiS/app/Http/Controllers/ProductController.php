@@ -16,17 +16,16 @@ class ProductController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        // $querybuilder = Product::all(); // ini untuk pake model
-        // $image = Product_Image::all();
-
-        // return view('product.index', [
-        //     'datas' => $querybuilder,
-        //     'image' => $image,
-        // ]);
-        $products = Product::with('productImage')->get();
-
+        $search = $request->input('search');
+    
+        $products = Product::with('productImage')
+            ->when($search, function ($query, $search) {
+                return $query->where('name', 'like', '%' . $search . '%');
+            })
+            ->get();
+    
         return view('product.index', [
             'datas' => $products,
         ]);

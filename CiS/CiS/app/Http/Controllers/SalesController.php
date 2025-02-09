@@ -19,10 +19,41 @@ class SalesController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $sales = Sales::with(['customer', 'paymentMethod'])->get(); // Eager load customers and payment methods
-        return view('sales.index', ['datas' => $sales]);
+        // Get the required data for dropdowns
+        $products = Product::all();
+        // Get all unique invoice numbers
+        $invoices = Sales::select('noNota')->distinct()->get();
+    
+        $query = Sales::with(['customer', 'paymentMethod', 'salesDetail.product']);
+    
+        // Apply date range filter
+        if ($request->filled('start_date')) {
+            $startDate = \Carbon\Carbon::createFromFormat('d/m/Y', $request->start_date)->startOfDay();
+            $query->whereDate('date', '>=', $startDate);
+        }
+    
+        if ($request->filled('end_date')) {
+            $endDate = \Carbon\Carbon::createFromFormat('d/m/Y', $request->end_date)->endOfDay();
+            $query->whereDate('date', '<=', $endDate);
+        }
+    
+        // Apply product filter
+        if ($request->filled('product_id')) {
+            $query->whereHas('salesDetail', function($q) use ($request) {
+                $q->where('product_id', $request->product_id);
+            });
+        }
+    
+        // Apply invoice filter
+        if ($request->filled('invoice')) {
+            $query->where('noNota', $request->invoice);
+        }
+    
+        $datas = $query->get();
+    
+        return view('sales.index', compact('datas', 'products', 'invoices'));
     }
 
     public function shipping()

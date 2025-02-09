@@ -14,13 +14,42 @@ use Illuminate\Support\Facades\Log;
 
 class PurchaseController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    
+    public function index(Request $request)
     {
-        $purchases = purchase::with(['supplier', 'paymentMethod', 'warehouse'])->get(); // Eager load suppliers and payment methods
-        return view('purchase.index', ['datas' => $purchases]);
+        // Get the required data for dropdowns
+        $products = Product::all();
+        // Get all unique invoice numbers
+        $invoices = Purchase::select('noNota')->distinct()->get();
+        
+        $query = Purchase::with(['supplier', 'paymentMethod', 'warehouse', 'purchaseDetails.product']);
+        
+        // Apply date range filter
+        if ($request->filled('start_date')) {
+            $startDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->start_date)->startOfDay();
+            $query->whereDate('purchase_date', '>=', $startDate);
+        }
+        
+        if ($request->filled('end_date')) {
+            $endDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->end_date)->endOfDay();
+            $query->whereDate('purchase_date', '<=', $endDate);
+        }
+        
+        // Apply product filter
+        if ($request->filled('product_id')) {
+            $query->whereHas('purchaseDetails', function($q) use ($request) {
+                $q->where('product_id', $request->product_id);
+            });
+        }
+        
+        // Apply invoice filter
+        if ($request->filled('invoice')) {
+            $query->where('noNota', $request->invoice);
+        }
+        
+        $datas = $query->get();
+        
+        return view('purchase.index', compact('datas', 'products', 'invoices'));
     }
 
     public function shipping()

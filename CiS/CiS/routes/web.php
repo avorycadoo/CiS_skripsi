@@ -5,6 +5,7 @@ use App\Http\Controllers\CategoriesController;
 use App\Http\Controllers\CompaniesController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductImageController;
@@ -48,6 +49,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('purchase', PurchaseController::class);
     Route::resource('salesRetur', SalesReturController::class);
     Route::resource('purchaseRetur', PurchaseReturController::class);
+    Route::resource('/', HomeController::class);
     // Route::resource('image', ProductImageController::class);
 
     Route::get('/sales/invoice/{noNota}', [SalesController::class, 'showByNoNota'])->name('sales.showByNoNota');
@@ -55,9 +57,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/sales/{id}/detail', [SalesController::class, 'detail'])->name('sales.detail');
     Route::get('/purchase/{id}/detail', [PurchaseController::class, 'detail'])->name('purchase.detail');
 
-    Route::get('/', function () {
-        return view('layouts.conquer');
-    });
+    // Route::get('/', function () {
+    //     return view('welcome');
+    // });
 
     Route::get('/penjualan', function () {
         return view('sales.nota');

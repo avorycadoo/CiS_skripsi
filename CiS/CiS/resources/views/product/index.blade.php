@@ -6,7 +6,17 @@
             <div class="col-md-12">
                 <h2 class="text-center mb-4">Product Catalog</h2>
                 <a class="btn btn-warning btn-sm" style="background-color: #000000; color: white;"
-                    href="{{ route('product.create') }}"> + Product</a><br>
+                    href="{{ route('product.create') }}"> + Product</a><br><br>
+
+                <form action="{{ route('product.index') }}" method="GET" class="mb-3">
+                    <div class="input-group">
+                        <input type="text" name="search" class="form-control" placeholder="Search by name"
+                            value="{{ request('search') }}">
+                        <div class="input-group-append">
+                            <button class="btn btn-primary" type="submit">Search</button>
+                        </div>
+                    </div>
+                </form>
                 <div class="row">
                     @foreach ($datas as $d)
                         <div class="col-md-4 mb-4">
@@ -31,6 +41,9 @@
                                     </p>
                                     <p class="card-text text-center">
                                         <strong>Cost:</strong> Rp {{ number_format($d->cost, 0, ',', '.') }}
+                                    </p>
+                                    <p class="card-text text-center">
+                                        <strong>Stock:</strong> {{ $d->stock }}
                                     </p>
                                     <p class="text-center text-muted">
                                         <small>Created: {{ $d->created_at }}</small><br>
