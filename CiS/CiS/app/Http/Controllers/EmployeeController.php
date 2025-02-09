@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Employe;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class EmployeeController extends Controller
@@ -21,9 +22,11 @@ class EmployeeController extends Controller
      */
     public function create()
     {
-        return view('employee.create');
+        // Fetch all users
+        $users = User::all();
+        
+        return view('employee.create', compact('users'));
     }
-
     /**
      * Store a newly created resource in storage.
      */

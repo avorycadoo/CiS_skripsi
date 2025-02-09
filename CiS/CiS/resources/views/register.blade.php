@@ -1,11 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Document</title>
+    <title>Register</title>
     <style>
         body {
             font-family: "Poppins", sans-serif;
@@ -68,18 +66,23 @@
             background-color: #2980b9;
         }
 
-        .register-link {
+        .login-link {
             text-align: center;
             margin-top: 15px;
             font-size: 0.9em;
         }
+
+        .error {
+            color: red;
+            font-size: 0.8em;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
-
 <body>
     <div class="container">
         <div class="card">
-            <h2>Login</h2>
+            <h2>Register</h2>
             @if ($errors->any())
                 <div class="error">
                     <ul>
@@ -89,17 +92,18 @@
                     </ul>
                 </div>
             @endif
-            <form action="{{ route('loginPost') }}" method="POST">
+            <form action="{{ route('registerPost') }}" method="POST">
                 @csrf
-                <input type="email" id="username" name="email" placeholder="Email" required>
-                <input type="password" id="password" name="password" placeholder="Password" required>
-                <button type="submit">Login</button>
+                <input type="text" name="name" placeholder="Full Name" required value="{{ old('name') }}">
+                <input type="email" name="email" placeholder="Email" required value="{{ old('email') }}">
+                <input type="password" name="password" placeholder="Password" required>
+                <input type="password" name="password_confirmation" placeholder="Confirm Password" required>
+                <button type="submit">Register</button>
             </form>
-            <div class="register-link">
-                Don't have an account? <a href="{{ route('register') }}">Register</a>
+            <div class="login-link">
+                Already have an account? <a href="{{ route('login') }}">Login</a>
             </div>
         </div>
     </div>
 </body>
-
 </html>

@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\PosSession;
+use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -49,7 +51,42 @@ class AuthController extends Controller
         return redirect()->back()->withErrors('Ops, harap cek email atau password Anda');
     }
 
+    public function register()
+    {
+        return view('register');
+    }
 
+    public function registerPost(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255', // We'll use this as the username
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:6|confirmed'
+        ]);
+    
+        $user = User::create([
+            'username' => $request->name, // Set username from name input
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'status_active' => 1, // Assuming you want to activate the user
+            'roles_id' => 2 // Default role, adjust as needed
+        ]);
+    
+        // Automatically log in the user after registration
+        Auth::login($user);
+    
+        // Create initial POS session
+        PosSession::create([
+            'users_id' => $user->id,
+            'Date' => Carbon::now()->toDateString(),
+            'cash_in' => 0,
+            'cash_out' => 0,
+            'session_status' => 'open',
+            'total_income' => 0
+        ]);
+    
+        return redirect('/')->with('success', 'Registrasi berhasil');
+    }
 
     public function logout()
     {
