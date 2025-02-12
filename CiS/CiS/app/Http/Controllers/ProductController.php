@@ -182,12 +182,12 @@ class ProductController extends Controller
     
         $product = Product::find($validatedData['product_id']);
         
-        if ($product->in_order_penjualan <= 0) {
+        if ($product->in_order_pembelian <= 0) {
             return redirect()->route('purchase.shipping')->with('error', 'No orders pending for this product.');
         }
     
         $product->stock += $validatedData['quantity_shipped'];
-        $product->in_order_penjualan -= $validatedData['quantity_shipped'];
+        $product->in_order_pembelian -= $validatedData['quantity_shipped'];
         $product->save();
     
         return redirect()->route('purchase.shipping')->with('success', 'Shipment created successfully.');
@@ -195,9 +195,9 @@ class ProductController extends Controller
     
     public function confirmReceiptPurchase(Product $product)
     {
-        if ($product->in_order_penjualan > 0) {
-            $product->stock += $product->in_order_penjualan;
-            $product->in_order_penjualan = 0;
+        if ($product->in_order_pembelian > 0) {
+            $product->stock += $product->in_order_pembelian;
+            $product->in_order_pembelian = 0;
             $product->save();
             
             return redirect()->route('purchase.shipping')->with('success', 'Shipment receipt confirmed and stock updated.');

@@ -18,7 +18,7 @@
                     <tr>
                         <td>{{ $product->name }}</td>
                         <td>{{ $product->stock }}</td>
-                        <td>{{ $product->in_order_penjualan }}</td>
+                        <td>{{ $product->in_order_pembelian }}</td>
                         <td>
                             <form action="{{ route('products.create-shipping-purchase', $product->id) }}" method="POST">
                                 @csrf
@@ -32,7 +32,7 @@
                             <form action="{{ route('products.confirm-receipt-purchase', $product) }}" method="POST">
                                 @csrf
                                 <button type="submit" class="btn btn-success mt-2"
-                                    {{ $product->in_order_penjualan == 0 ? 'disabled' : '' }}>Confirm Receipt</button>
+                                    {{ $product->in_order_pembelian == 0 ? 'disabled' : '' }}>Confirm Receipt</button>
                             </form>
                         </td>
                     </tr>

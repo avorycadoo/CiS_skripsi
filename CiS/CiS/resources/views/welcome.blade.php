@@ -35,7 +35,7 @@
                         <div class="col-7 d-flex align-items-center">
                             <div class="numbers">
                                 <p class="card-category">Orders This Month</p>
-                                <h4 class="card-title">{{ $ordersThisMonth }}</h4>
+                                <h4 class="card-title">{{ $ordersThisMonth }} units</h4>
                             </div>
                         </div>
                     </div>
@@ -76,7 +76,7 @@
                             <div class="col-7 d-flex align-items-center">
                                 <div class="numbers">
                                     <p class="card-category">Sales Returns</p>
-                                    <h4 class="card-title">{{ $returPenjualan }}</h4>
+                                    <h4 class="card-title">{{ $returPenjualan }} units</h4>
                                 </div>
                             </div>
                         </div>
@@ -96,7 +96,7 @@
                             <div class="col-7 d-flex align-items-center">
                                 <div class="numbers">
                                     <p class="card-category">Purchase Returns</p>
-                                    <h4 class="card-title">{{ $returPembelian }}</h4>
+                                    <h4 class="card-title">{{ $returPembelian }} units</h4>
                                 </div>
                             </div>
                         </div>

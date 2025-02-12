@@ -312,7 +312,7 @@ class PurchaseController extends Controller
             if ($isSupplierShipping) {
                 foreach ($products as $product) {
                     $purchasedProduct = Product::find($product['product_id']);
-                    $purchasedProduct->in_order_penjualan += $product['quantity'];
+                    $purchasedProduct->in_order_pembelian += $product['quantity'];
                     $purchasedProduct->save();
                 }
 

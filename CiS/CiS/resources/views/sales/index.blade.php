@@ -19,20 +19,20 @@
                     <div class="row g-3">
                         <!-- Date Range -->
                         <div class="col-md-3">
-                            <label class="form-label">Tanggal Mulai</label>
+                            <label class="form-label">Start Date</label>
                             <input type="date" name="start_date" class="form-control datepicker" placeholder="dd/mm/yyyy"
                                 value="{{ request('start_date') }}">
                         </div>
 
                         <div class="col-md-3">
-                            <label class="form-label">Tanggal Akhir</label>
+                            <label class="form-label">End Date</label>
                             <input type="date" name="end_date" class="form-control datepicker" placeholder="dd/mm/yyyy"
                                 value="{{ request('end_date') }}">
                         </div>
 
                         <!-- Product Dropdown -->
                         <div class="col-md-3">
-                            <label class="form-label">Produk</label>
+                            <label class="form-label">Products</label>
                             <select name="product_id" class="form-select">
                                 <option value="">All Product</option>
                                 @foreach ($products as $product)

@@ -155,7 +155,7 @@
 
                         <a class="collapse-item" href="{{ route('warehouse.konfigurasi') }}">
                             <i class="fas fa-fw fa-cogs"></i>
-                            <span>Warehouse Configurations</span>
+                            <span>Inventory Configurations</span>
                         </a>
                     </div>
                 </div>
