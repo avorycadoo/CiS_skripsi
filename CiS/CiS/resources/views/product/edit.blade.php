@@ -41,6 +41,16 @@
                 placeholder="Enter your maksimum retur" value="{{ $data->maksimum_retur }}">
         </div>
 
+        <div class="form-group">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="status_active" name="status_active"
+                    {{ $data->status_active ? 'checked' : '' }}>
+                <label class="form-check-label" for="status_active">
+                    Active
+                </label>
+            </div>
+        </div>
+
         <a class ="btn btn-info" href="{{ url()->previous() }}"> Cancel </a>
         <button type="submit" class="btn btn-primary">Submit</button>
 

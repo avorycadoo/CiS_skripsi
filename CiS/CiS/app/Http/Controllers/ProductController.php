@@ -21,6 +21,7 @@ class ProductController extends Controller
         $search = $request->input('search');
     
         $products = Product::with('productImage')
+            ->where('status_active', 1)
             ->when($search, function ($query, $search) {
                 return $query->where('name', 'like', '%' . $search . '%');
             })
@@ -77,7 +78,7 @@ class ProductController extends Controller
         $data->price = $request->get('product_price');
         $data->cost = $request->get('product_cost');
         $data->stock = $request->get('product_stock');
-        $data->cogs_methods = 'fifo'; // Menggunakan FIFO tetap
+        // $data->cogs_methods = 'fifo'; // Menggunakan FIFO tetap
         $data->minimum_stock = $request->get('product_minstock');
         $data->maksimum_retur = $request->get('product_maksretur');
         $data->status_active = '1';
@@ -243,7 +244,7 @@ class ProductController extends Controller
         // $updatedData->cogs_methods = $request->cogs_methods;
         $updatedData->minimum_stock = $request->minimum_stock;
         $updatedData->maksimum_retur = $request->maksimum_retur;
-
+        $updatedData->status_active = $request->has('status_active') ? 1 : 0;
         $updatedData->save();
 
         return redirect()->route("product.index")->with('status', "Horray, Your customer data is already updated");
