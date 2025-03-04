@@ -132,7 +132,7 @@
                     <div class="bg-white py-2 collapse-inner rounded">
                         <a class="collapse-item" href="product">
                             <i class="fas fa-fw fa-box-open"></i>
-                            <span>Product</span>
+                            <span>Product Management</span>
                         </a>
 
                         <a class="collapse-item" href="profitLoss">

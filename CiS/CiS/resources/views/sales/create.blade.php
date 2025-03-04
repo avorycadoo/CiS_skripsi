@@ -225,6 +225,9 @@
             const products = []; // Initialize an array to hold products
             const productsInput = document.getElementById('productsInput');
 
+            // Call updateTotalPrice on page load to ensure initial calculation
+            updateTotalPrice();
+
             function addProduct() {
                 const productSelect = document.getElementById('product_id');
                 const productName = productSelect.options[productSelect.selectedIndex].text;
@@ -245,7 +248,6 @@
             `;
 
                     tableBody.appendChild(row);
-                    updateTotalPrice();
 
                     // Add the product to the products array
                     products.push({
@@ -255,15 +257,16 @@
                     });
 
                     // Add event listener for the remove button
-                    row.querySelector('.remove-product').addEventListener('click', function() {
+                    const removeBtn = row.querySelector('.remove-product');
+                    removeBtn.addEventListener('click', function() {
                         row.remove();
-                        updateTotalPrice();
-                        // Remove the product from the products array
-                        const index = products.findIndex(p => p.product_id === productSelect.value);
+                        // Remove the product from the products array based on row index
+                        const index = Array.from(tableBody.children).indexOf(row);
                         if (index > -1) {
                             products.splice(index, 1);
                         }
                         updateProductsInput();
+                        updateTotalPrice();
                     });
 
                     // Reset the product selection and quantity
@@ -273,6 +276,7 @@
 
                     // Update the products input
                     updateProductsInput();
+                    updateTotalPrice();
                 }
             }
 
@@ -294,14 +298,18 @@
                     if (this.checked) {
                         const inputDiv = this.closest('.form-check').querySelector(
                             '.discount-value-input');
-                        inputDiv.style.display = 'block';
+                        if (inputDiv) {
+                            inputDiv.style.display = 'block';
 
-                        // Update the discount value when input changes
-                        const valueInput = inputDiv.querySelector('input');
-                        valueInput.addEventListener('input', function() {
-                            radio.value = this.value;
-                            updateTotalPrice();
-                        });
+                            // Update the discount value when input changes
+                            const valueInput = inputDiv.querySelector('input');
+                            if (valueInput) {
+                                valueInput.addEventListener('input', function() {
+                                    radio.value = this.value;
+                                    updateTotalPrice();
+                                });
+                            }
+                        }
                     }
                     updateTotalPrice();
                 });
@@ -320,14 +328,18 @@
                     if (this.checked) {
                         const inputDiv = this.closest('.form-check').querySelector(
                             '.shipping-value-input');
-                        inputDiv.style.display = 'block';
+                        if (inputDiv) {
+                            inputDiv.style.display = 'block';
 
-                        // Update the shipping value when input changes
-                        const valueInput = inputDiv.querySelector('input');
-                        valueInput.addEventListener('input', function() {
-                            radio.value = this.value;
-                            updateTotalPrice();
-                        });
+                            // Update the shipping value when input changes
+                            const valueInput = inputDiv.querySelector('input');
+                            if (valueInput) {
+                                valueInput.addEventListener('input', function() {
+                                    radio.value = this.value;
+                                    updateTotalPrice();
+                                });
+                            }
+                        }
                     }
                     updateTotalPrice();
                 });
@@ -348,92 +360,168 @@
                     if (quantity >= 1) hasProducts = true;
                 });
 
-                let discountRadios = document.querySelectorAll('.discount-radio');
-                let perProductDiscount = document.querySelector('input[data-name="Discount per product"]');
-                let minimumPurchaseRadio = document.querySelector('input[data-name="Minimum purchase discount"]');
-                let volumeDiscountRadio = document.querySelector(
-                    'input[data-name="Discount on the number of product purchases"]');
-
-                // Reset all radios
-                discountRadios.forEach(radio => {
-                    radio.checked = false;
-                    radio.closest('.form-check').querySelector('.discount-value-input').style.display =
-                        'none';
-                });
-
-                // Check conditions and apply highest applicable discount
-                if (totalQuantity >= 20 && volumeDiscountRadio) {
-                    volumeDiscountRadio.checked = true;
-                    volumeDiscountRadio.closest('.form-check').querySelector('.discount-value-input').style
-                        .display = 'block';
-                } else if (totalPrice >= 2000000 && minimumPurchaseRadio) {
-                    minimumPurchaseRadio.checked = true;
-                    minimumPurchaseRadio.closest('.form-check').querySelector('.discount-value-input').style
-                        .display = 'block';
-                } else if (hasProducts && perProductDiscount) {
-                    perProductDiscount.checked = true;
-                    perProductDiscount.closest('.form-check').querySelector('.discount-value-input').style.display =
-                        'block';
+                // Display the total price without discount or shipping
+                const totalPriceElement = document.getElementById('totalPrice');
+                if (totalPriceElement) {
+                    totalPriceElement.textContent = `Rp ${totalPrice.toFixed(2)}`;
                 }
 
-                document.getElementById('totalPrice').textContent = `Rp ${totalPrice.toFixed(2)}`;
+                // Default values for discount and shipping
+                let discountAmount = 0;
+                let shippingValue = 0;
 
-                // Get selected discount value
-                const selectedDiscount = document.querySelector('input[name="discount_id"]:checked');
-                const discountValue = selectedDiscount ? parseFloat(selectedDiscount.value) : 0;
+                // Only process discounts if there are any discount radios available
+                const discountRadios = document.querySelectorAll('.discount-radio');
+                if (discountRadios.length > 0) {
+                    let perProductDiscount = document.querySelector('input[data-name="Discount per product"]');
+                    let minimumPurchaseRadio = document.querySelector(
+                        'input[data-name="Minimum purchase discount"]');
+                    let volumeDiscountRadio = document.querySelector(
+                        'input[data-name="Discount on the number of product purchases"]');
 
-                // Calculate discount amount
-                const discountAmount = (totalPrice * discountValue) / 100;
-                document.getElementById('sales_disc').value = discountAmount.toFixed(2);
+                    // Reset all radios
+                    discountRadios.forEach(radio => {
+                        radio.checked = false;
+                        const valueInput = radio.closest('.form-check').querySelector(
+                            '.discount-value-input');
+                        if (valueInput) {
+                            valueInput.style.display = 'none';
+                        }
+                    });
 
-                // Get shipping value
+                    // Check conditions and apply highest applicable discount
+                    if (totalQuantity >= 20 && volumeDiscountRadio) {
+                        volumeDiscountRadio.checked = true;
+                        const valueInput = volumeDiscountRadio.closest('.form-check').querySelector(
+                            '.discount-value-input');
+                        if (valueInput) {
+                            valueInput.style.display = 'block';
+                        }
+                    } else if (totalPrice >= 2000000 && minimumPurchaseRadio) {
+                        minimumPurchaseRadio.checked = true;
+                        const valueInput = minimumPurchaseRadio.closest('.form-check').querySelector(
+                            '.discount-value-input');
+                        if (valueInput) {
+                            valueInput.style.display = 'block';
+                        }
+                    } else if (hasProducts && perProductDiscount) {
+                        perProductDiscount.checked = true;
+                        const valueInput = perProductDiscount.closest('.form-check').querySelector(
+                            '.discount-value-input');
+                        if (valueInput) {
+                            valueInput.style.display = 'block';
+                        }
+                    }
+
+                    // Get selected discount value
+                    const selectedDiscount = document.querySelector('input[name="discount_id"]:checked');
+                    const discountValue = selectedDiscount ? parseFloat(selectedDiscount.value) : 0;
+
+                    // Calculate discount amount
+                    discountAmount = (totalPrice * discountValue) / 100;
+
+                    const salesDiscElement = document.getElementById('sales_disc');
+                    if (salesDiscElement) {
+                        salesDiscElement.value = discountAmount.toFixed(2);
+                    }
+                }
+
+                // Get shipping value if shipping options exist
                 const selectedShipping = document.querySelector('input[name="shipping_id"]:checked');
-                const shippingValue = selectedShipping ? parseFloat(selectedShipping.value) : 0;
-                document.getElementById('shipping_cost').value = shippingValue.toFixed(2);
+                if (selectedShipping) {
+                    shippingValue = parseFloat(selectedShipping.value) || 0;
 
+                    const shippingCostElement = document.getElementById('shipping_cost');
+                    if (shippingCostElement) {
+                        shippingCostElement.value = shippingValue.toFixed(2);
+                    }
+                }
+
+                // Calculate final price
                 const finalPrice = totalPrice - discountAmount + shippingValue;
 
-                document.getElementById('finalPrice').innerText = 'Rp ' + Math.max(finalPrice, 0).toLocaleString(
-                    'id-ID', {
+                // Update final price elements
+                const finalPriceElement = document.getElementById('finalPrice');
+                const finalPriceInput = document.getElementById('final_price');
+
+                if (finalPriceElement) {
+                    finalPriceElement.innerText = 'Rp ' + Math.max(finalPrice, 0).toLocaleString('id-ID', {
                         minimumFractionDigits: 2
                     });
-                document.getElementById('final_price').value = Math.max(finalPrice, 0);
+                }
+
+                if (finalPriceInput) {
+                    finalPriceInput.value = Math.max(finalPrice, 0);
+                }
+
+                console.log('updateTotalPrice calculation:', {
+                    totalPrice,
+                    discountAmount,
+                    shippingValue,
+                    finalPrice: Math.max(finalPrice, 0)
+                });
             }
 
             // Add event listeners for discount value inputs
             document.querySelectorAll('.discount-value-input input').forEach(input => {
                 input.addEventListener('input', function() {
                     const radio = this.closest('.form-check').querySelector('.discount-radio');
-                    radio.value = this.value;
-                    updateTotalPrice();
+                    if (radio) {
+                        radio.value = this.value;
+                        updateTotalPrice();
+                    }
                 });
             });
 
             // Attach the addProduct function to the button click event
-            document.getElementById('addProduct').addEventListener('click', addProduct);
+            const addProductBtn = document.getElementById('addProduct');
+            if (addProductBtn) {
+                addProductBtn.addEventListener('click', addProduct);
+            }
 
             // Handle form submission
-            document.querySelector('form').addEventListener('submit', function(event) {
-                console.log('Final Price before submit:', document.getElementById('final_price').value);
-            });
+            const form = document.querySelector('form');
+            if (form) {
+                form.addEventListener('submit', function(event) {
+                    // Final update before submission
+                    updateTotalPrice();
+                    console.log('Final Price before submit:', document.getElementById('final_price').value);
+                });
+            }
 
-            // Toggle discount section visibility
-            document.getElementById('addDiscountBtn').addEventListener('click', function() {
-                const discountSection = document.getElementById('discountSection');
-                discountSection.style.display = discountSection.style.display === 'none' ? 'block' : 'none';
-            });
+            // Toggle collapsible sections if buttons exist
+            const addDiscountBtn = document.getElementById('addDiscountBtn');
+            if (addDiscountBtn) {
+                addDiscountBtn.addEventListener('click', function() {
+                    const discountSection = document.getElementById('discountSection');
+                    if (discountSection) {
+                        discountSection.style.display = discountSection.style.display === 'none' ? 'block' :
+                            'none';
+                    }
+                });
+            }
 
-            // Toggle shipping section visibility
-            document.getElementById('addShippingBtn').addEventListener('click', function() {
-                const shippingSection = document.getElementById('shippingSection');
-                shippingSection.style.display = shippingSection.style.display === 'none' ? 'block' : 'none';
-            });
+            const addShippingBtn = document.getElementById('addShippingBtn');
+            if (addShippingBtn) {
+                addShippingBtn.addEventListener('click', function() {
+                    const shippingSection = document.getElementById('shippingSection');
+                    if (shippingSection) {
+                        shippingSection.style.display = shippingSection.style.display === 'none' ? 'block' :
+                            'none';
+                    }
+                });
+            }
 
-            // Update total price when discount input changes
-            document.getElementById('sales_disc').addEventListener('input', updateTotalPrice);
+            // Add event listeners for direct input changes if elements exist
+            const salesDiscElement = document.getElementById('sales_disc');
+            if (salesDiscElement) {
+                salesDiscElement.addEventListener('input', updateTotalPrice);
+            }
 
-            // Update total price when shipping input changes
-            document.getElementById('shipping_cost').addEventListener('input', updateTotalPrice);
+            const shippingCostElement = document.getElementById('shipping_cost');
+            if (shippingCostElement) {
+                shippingCostElement.addEventListener('input', updateTotalPrice);
+            }
         });
     </script>
 @endsection

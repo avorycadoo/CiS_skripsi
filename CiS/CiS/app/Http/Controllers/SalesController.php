@@ -56,18 +56,349 @@ class SalesController extends Controller
         return view('sales.index', compact('datas', 'products', 'invoices'));
     }
 
+    /**
+     * Display the list of sales that need shipping
+     */
     public function shipping()
     {
-        $products = Product::all();
-        return view('sales.shipping', compact('products'));
+        // Get all sales with no shipped date (pending shipment)
+        $pendingShipments = Sales::whereNull('shipped_date')
+            ->with(['customer', 'paymentMethod', 'salesDetail.product'])
+            ->orderBy('date', 'asc')
+            ->get();
+        
+        // Get all sales that have been shipped
+        $shippedOrders = Sales::whereNotNull('shipped_date')
+            ->with(['customer', 'paymentMethod'])
+            ->orderBy('id', 'desc')
+            ->take(10) // Limit to most recent 10 shipped orders
+            ->get();
+        
+        return view('sales.shipping', compact('pendingShipments', 'shippedOrders'));
     }
 
-    public function createShipping()
+    /**
+     * Display the shipment detail page for a specific sale
+     */
+    public function shipDetail($id)
     {
-        $products = Product::all();
-        return view('sales.createShipping', compact('products'));
+        // Load the sale with its related data
+        $sale = Sales::with(['customer', 'paymentMethod', 'salesDetail.product'])->findOrFail($id);
+        
+        return view('sales.ship-detail', compact('sale'));
     }
 
+    /**
+     * Process shipping for a specific product
+     */
+    /**
+     * Process shipping for a specific product
+     */
+    public function createShipping(Request $request)
+    {
+        // Log request data untuk debug
+        \Log::info('Shipping Request Data:', $request->all());
+        
+        // Validasi dengan pendekatan composite key
+        $validatedData = $request->validate([
+            'product_id' => 'required|exists:product,id',
+            'sale_id' => 'required|exists:sales,id',
+            'detail_product_id' => 'required',
+            'detail_sales_id' => 'required',
+            'quantity_shipped' => 'required|integer|min:1',
+            'shipping_address' => 'nullable|string',
+            'recipients_name' => 'nullable|string',
+        ]);
+    
+        // Get the product and sale
+        $product = Product::find($validatedData['product_id']);
+        $sale = Sales::find($validatedData['sale_id']);
+        
+        // Get sales detail menggunakan composite key
+        $salesDetail = DB::table('sales_detail')
+            ->where('product_id', $validatedData['detail_product_id'])
+            ->where('sales_id', $validatedData['detail_sales_id'])
+            ->first();
+        
+        if (!$salesDetail) {
+            return redirect()->back()->with('error', 'Sales detail not found');
+        }
+        
+        // Cek stok mencukupi
+        if ($product->stock < $validatedData['quantity_shipped']) {
+            return redirect()->back()->with('error', 'Insufficient stock for ' . $product->name);
+        }
+        
+        // Cek in_order mencukupi
+        if (($product->in_order_penjualan ?? 0) < $validatedData['quantity_shipped']) {
+            return redirect()->back()->with('error', 'Cannot ship more than total in-order quantity for ' . $product->name);
+        }
+        
+        // Ambil total order quantity untuk detail ini
+        $totalOrderQuantity = $salesDetail->total_quantity;
+        
+        // Hitung jumlah yang sudah dikirim untuk detail ini 
+        $shippedQuantity = DB::table('shipping_history')
+            ->where('product_id', $validatedData['detail_product_id'])
+            ->where('sales_id', $validatedData['detail_sales_id'])
+            ->sum('quantity_shipped') ?? 0;
+        
+        // Hitung sisa yang bisa dikirim
+        $remainingQuantity = $totalOrderQuantity - $shippedQuantity;
+        
+        // Cek kuantitas yang dikirim tidak melebihi sisa
+        if ($remainingQuantity < $validatedData['quantity_shipped']) {
+            return redirect()->back()->with('error', 'Cannot ship more than the remaining quantity (' . $remainingQuantity . ') for this invoice item');
+        }
+        
+        // Process COGS method dan pengurangan stok seperti sebelumnya...
+        $cogsMethod = strtolower($sale->cogs_method ?? 'average'); // Default to average
+        
+        try {
+            DB::beginTransaction();
+            
+            // Process stock reduction based on COGS method
+            if ($cogsMethod === 'fifo') {
+                // FIFO method - reduce stock from both product and product_fifo tables
+                $productFifoEntries = DB::table('product_fifo')
+                    ->where('product_id', $product->id)
+                    ->where('stock', '>', 0)
+                    ->orderBy('purchase_date', 'asc')
+                    ->get();
+    
+                $remainingToReduce = $validatedData['quantity_shipped'];
+                
+                // Reduce stock in FIFO order
+                foreach ($productFifoEntries as $fifoEntry) {
+                    if ($remainingToReduce <= 0) break;
+                    
+                    $reduceQuantity = min($fifoEntry->stock, $remainingToReduce);
+                    
+                    DB::table('product_fifo')
+                        ->where('id', $fifoEntry->id)
+                        ->update(['stock' => $fifoEntry->stock - $reduceQuantity]);
+                    
+                    $remainingToReduce -= $reduceQuantity;
+                }
+                
+                // If we couldn't reduce all from FIFO entries, log an error
+                if ($remainingToReduce > 0) {
+                    \Log::warning('Not enough FIFO entries to reduce ' . $validatedData['quantity_shipped'] . ' units for product ' . $product->id);
+                }
+                
+                // Also reduce from main product stock
+                $product->stock -= $validatedData['quantity_shipped'];
+            } else {
+                // Average method - only reduce from product table
+                $product->stock -= $validatedData['quantity_shipped'];
+            }
+            
+            // Update in_order quantity
+            $product->in_order_penjualan -= $validatedData['quantity_shipped'];
+            $product->save();
+            
+            // Ambil alamat pengiriman dan nama penerima
+            // Jika tidak diisi, gunakan data dari customer
+            $shippingAddress = $validatedData['shipping_address'] ?? null;
+            $recipientsName = $validatedData['recipients_name'] ?? null;
+            
+            // Jika kosong, gunakan data dari customer
+            if (empty($shippingAddress) && $sale->customer) {
+                $shippingAddress = $sale->customer->address;
+            }
+            
+            if (empty($recipientsName) && $sale->customer) {
+                $recipientsName = $sale->customer->name;
+            }
+            
+            // Insert ke shipping_history
+            DB::table('shipping_history')->insert([
+                'sales_id' => $validatedData['sale_id'],
+                'product_id' => $validatedData['product_id'],
+                'quantity_shipped' => $validatedData['quantity_shipped'],
+                'shipping_address' => $shippingAddress,
+                'recipients_name' => $recipientsName,
+                'shipped_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+                'sales_detail_id' => $salesDetail->id ?? null,
+            ]);
+            
+            // Cek apakah semua item telah dikirim
+            $allDetailsFulfilledForThisInvoice = true;
+            $salesDetails = DB::table('sales_detail')->where('sales_id', $sale->id)->get();
+            
+            foreach ($salesDetails as $detail) {
+                $detailTotal = $detail->total_quantity;
+                
+                // Use composite key to check shipping history
+                $detailShipped = DB::table('shipping_history')
+                    ->where('product_id', $detail->product_id)
+                    ->where('sales_id', $detail->sales_id)
+                    ->sum('quantity_shipped') ?? 0;
+                
+                if ($detailShipped < $detailTotal) {
+                    $allDetailsFulfilledForThisInvoice = false;
+                    break;
+                }
+            }
+            
+            // Jika semua item dikirim, update shipped_date di sales
+            if ($allDetailsFulfilledForThisInvoice) {
+                // Update using query builder to avoid timestamp issues
+                DB::table('sales')
+                    ->where('id', $sale->id)
+                    ->update(['shipped_date' => now()]);
+                
+                DB::commit();
+                return redirect()->route('sales.shipping')->with('success', 'All items have been shipped successfully. Order marked as completed.');
+            }
+    
+            DB::commit();
+            return redirect()->back()->with('success', 'Successfully shipped ' . $validatedData['quantity_shipped'] . ' units of ' . $product->name);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error in shipping: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error processing shipment: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Ship all available items in a sale
+     */
+    public function shipAll(Request $request, $id)
+    {
+        $request->validate([
+            'shipped_date' => 'required|date',
+        ]);
+        
+        // Get the sale with its details
+        $sale = Sales::with('salesDetail.product')->findOrFail($id);
+        
+        // Process each product in the sale
+        $someItemsShipped = false;
+        
+        foreach ($sale->salesDetail as $detail) {
+            $product = Product::find($detail->product_id);
+            
+            if (!$product) continue;
+            
+            // Get total order quantity for this detail
+            $totalOrderQuantity = $detail->total_quantity;
+            
+            // Calculate how much has been shipped already for this sales detail
+            $shippedQuantity = DB::table('shipping_history')
+                ->where('sales_detail_id', $detail->sales_id)
+                ->sum('quantity_shipped') ?? 0;
+            
+            // Calculate remaining quantity for this sales detail
+            $remainingQuantity = $totalOrderQuantity - $shippedQuantity;
+            
+            // Skip if nothing remains to be shipped for this detail
+            if ($remainingQuantity <= 0) {
+                continue;
+            }
+            
+            // Get the total in_order quantity
+            $totalInOrder = $product->in_order_penjualan ?? 0;
+            
+            // Calculate quantity to ship (min between remaining for this detail, total in order, and available stock)
+            $quantityToShip = min($remainingQuantity, $totalInOrder, $product->stock);
+            
+            if ($quantityToShip <= 0) continue;
+            
+            $someItemsShipped = true;
+            
+            // Get the COGS method used for this sale
+            $cogsMethodId = $sale->cogs_method_id;
+            $cogsMethod = 'fifo'; // Default to fifo
+            
+            if ($cogsMethodId) {
+                // Get the COGS method name from detailkonfigurasi
+                $cogsMethodName = DB::table('detailkonfigurasi')
+                    ->where('id', $cogsMethodId)
+                    ->value('name');
+                
+                // Check if name contains 'fifo' (case-insensitive)
+                if ($cogsMethodName && stripos($cogsMethodName, 'fifo') !== false) {
+                    $cogsMethod = 'fifo';
+                } else if ($cogsMethodName) {
+                    $cogsMethod = 'average';
+                }
+            }
+            
+            if ($cogsMethod === 'fifo') {
+                // FIFO method - reduce stock from both product and product_fifo tables
+                $productFifoEntries = DB::table('product_fifo')
+                    ->where('product_id', $product->id)
+                    ->where('stock', '>', 0)
+                    ->orderBy('purchase_date', 'asc')
+                    ->get();
+    
+                $remainingQuantity = $quantityToShip;
+                
+                // Reduce stock in FIFO order
+                foreach ($productFifoEntries as $fifoEntry) {
+                    if ($remainingQuantity <= 0) break;
+                    
+                    $reduceQuantity = min($fifoEntry->stock, $remainingQuantity);
+                    
+                    DB::table('product_fifo')
+                        ->where('id', $fifoEntry->id)
+                        ->update(['stock' => $fifoEntry->stock - $reduceQuantity]);
+                    
+                    $remainingQuantity -= $reduceQuantity;
+                }
+            }
+            
+            // Record this shipment in shipping_history
+            DB::table('shipping_history')->insert([
+                'sales_id' => $sale->id,
+                'sales_detail_id' => $detail->id,
+                'product_id' => $product->id,
+                'quantity_shipped' => $quantityToShip,
+                'shipped_at' => $request->shipped_date,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+            
+            // Update product stock (for both FIFO and Average methods)
+            $product->stock -= $quantityToShip;
+            $product->in_order_penjualan -= $quantityToShip;
+            $product->save();
+        }
+        
+        // If no items were shipped, return with error
+        if (!$someItemsShipped) {
+            return redirect()->back()->with('error', 'No items could be shipped. Check stock availability.');
+        }
+        
+        // Check if all items in this invoice have been fully shipped
+        $allDetailsFulfilledForThisInvoice = true;
+        
+        foreach ($sale->salesDetail as $detail) {
+            $detailTotal = $detail->total_quantity;
+            $detailShipped = DB::table('shipping_history')
+                ->where('sales_detail_id', $detail->id)
+                ->sum('quantity_shipped') ?? 0;
+            
+            if ($detailShipped < $detailTotal) {
+                $allDetailsFulfilledForThisInvoice = false;
+                break;
+            }
+        }
+        
+        // If all items are shipped, update the sale's shipped_date
+        if ($allDetailsFulfilledForThisInvoice) {
+            $sale->shipped_date = $request->shipped_date;
+            $sale->save();
+            
+            return redirect()->route('sales.shipping')->with('success', 'All items have been shipped successfully. Order marked as completed.');
+        } else {
+            // If some items are still to be shipped, update the message
+            return redirect()->back()->with('success', 'Shipped all available items. Some items are still pending.');
+        }
+    }
     /**
      * Show the form for creating a new resource.
      */
@@ -342,8 +673,9 @@ class SalesController extends Controller
                     'customers_id' => $request->input('sales_cust_id'),
                     'shipping_cost' => $request->input('shipping_cost', 0),
                     'discount' => $request->input('sales_disc', 0),
+                    'cogs_method' => $request->input('cogs_method'),
                 ]);
-
+                // dd($sale);
                 // Process products
                 $products = json_decode($request->input('products'), true);
 

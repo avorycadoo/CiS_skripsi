@@ -54,16 +54,257 @@ class PurchaseController extends Controller
 
     public function shipping()
     {
-        $products = Product::all();
-        return view('purchase.shipping', compact('products'));
+        // Get all purchases with no receive date (pending shipment)
+        $pendingShipments = Purchase::whereNull('receive_date')
+            ->with(['supplier', 'paymentMethod', 'warehouse', 'purchaseDetails.product'])
+            ->orderBy('purchase_date', 'asc')
+            ->get();
+        
+        // Get all purchases that have been received (shipped)
+        $shippedOrders = Purchase::whereNotNull('receive_date')
+            ->with(['supplier', 'paymentMethod', 'warehouse'])
+            ->orderBy('id', 'desc')
+            ->take(10) // Limit to the most recent 10 shipped orders
+            ->get();
+        
+        return view('purchase.shipping', compact('pendingShipments', 'shippedOrders'));
     }
+    
 
-    public function createShipping()
+    /**
+     * Display the shipment detail page for a specific sale
+     */
+    public function shipDetail($id)
     {
-        $products = Product::all();
-        return view('purchase.createShipping', compact('products'));
+        // Load the sale with its related data
+        $purchase = purchase::with(['supplier', 'paymentMethod','warehouse', 'purchaseDetails.product'])->findOrFail($id);
+        
+        return view('purchase.ship-detail', compact('purchase'));
     }
 
+    /**
+     * Process shipping for a specific product
+     */
+    /**
+     * Process shipping for a specific product
+     */
+
+     public function createReceiving(Request $request)
+     {
+         // Log request data for debugging
+         \Log::info('Receiving Request Data:', $request->all());
+         
+         // Validation with composite key approach
+         $validatedData = $request->validate([
+             'product_id' => 'required|exists:product,id',
+             'purchase_id' => 'required|exists:purchase,id',
+             'detail_product_id' => 'required',
+             'detail_purchase_id' => 'required',
+             'quantity_received' => 'required|integer|min:1',
+         ]);
+     
+         // Get the product and purchase
+         $product = Product::find($validatedData['product_id']);
+         $purchase = Purchase::find($validatedData['purchase_id']);
+         
+         // Get warehouse_id from purchase table
+         $warehouseId = $purchase->warehouse_id;
+         $isDirectlyInStore = !$warehouseId; // If warehouse_id is null/0, it's "Directly In Store"
+         
+         // If not "Directly In Store", check if the warehouse exists
+         if (!$isDirectlyInStore) {
+             $warehouseExists = DB::table('warehouse')->where('id', $warehouseId)->exists();
+             if (!$warehouseExists) {
+                 // Warehouse doesn't exist, so we'll treat it as "Directly In Store"
+                 $isDirectlyInStore = true;
+                 \Log::warning("Warehouse ID {$warehouseId} not found. Treating as 'Directly In Store'.");
+             }
+         }
+     
+         // Get purchase detail using composite key
+         $purchaseDetail = DB::table('purchase_detail')
+             ->where('product_id', $validatedData['detail_product_id'])
+             ->where('purchase_id', $validatedData['detail_purchase_id'])
+             ->first();
+         
+         if (!$purchaseDetail) {
+             return redirect()->back()->with('error', 'Purchase detail not found');
+         }
+         
+         // Get total order quantity for this detail
+         $totalOrderQuantity = $purchaseDetail->quantity;
+         
+         // Calculate quantity already received for this detail
+         $receivedQuantity = DB::table('receive_history')
+             ->where('product_id', $validatedData['detail_product_id'])
+             ->where('purchase_id', $validatedData['detail_purchase_id'])
+             ->sum('quantity_received') ?? 0;
+         
+         // Calculate remaining quantity that can be received
+         $remainingQuantity = $totalOrderQuantity - $receivedQuantity;
+         
+         // Check that received quantity doesn't exceed remaining quantity
+         if ($remainingQuantity < $validatedData['quantity_received']) {
+             return redirect()->back()->with('error', 'Cannot receive more than the remaining quantity (' . $remainingQuantity . ') for this purchase item');
+         }
+         
+         try {
+             DB::beginTransaction();
+             
+             // Always update inventory in the main product table
+             $product->stock += $validatedData['quantity_received'];
+             
+             // Only update product_has_warehouse if NOT "Directly In Store"
+             if (!$isDirectlyInStore) {
+                 // Update or insert stock in product_has_warehouse table
+                 $existingWarehouseStock = DB::table('product_has_warehouse')
+                     ->where('product_id', $product->id)
+                     ->where('warehouse_id', $warehouseId)
+                     ->first();
+                 
+                 if ($existingWarehouseStock) {
+                     // Update existing warehouse stock
+                     DB::table('product_has_warehouse')
+                         ->where('product_id', $product->id)
+                         ->where('warehouse_id', $warehouseId)
+                         ->increment('stock', $validatedData['quantity_received']);
+                 } else {
+                     // Insert new warehouse stock record
+                     DB::table('product_has_warehouse')->insert([
+                         'product_id' => $product->id,
+                         'warehouse_id' => $warehouseId,
+                         'stock' => $validatedData['quantity_received'],
+                         'created_at' => now(),
+                         'updated_at' => now()
+                     ]);
+                 }
+             }
+             
+             // Get COGS method directly from purchase table
+             $cogsMethod = strtolower($purchase->cogs_method ?? 'average'); // Default to average
+             
+             // Check if COGS method is FIFO
+             if ($cogsMethod === 'fifo') {
+                 // Check product_fifo table structure before insert
+                 $productFifoColumns = DB::getSchemaBuilder()->getColumnListing('product_fifo');
+                 \Log::info('Product FIFO columns:', $productFifoColumns);
+                 
+                 // Create data array for insert
+                 $fifoData = [
+                     'product_id' => $product->id,
+                     'purchase_id' => $purchase->id,
+                     'stock' => $validatedData['quantity_received'],
+                 ];
+                 
+                 // Add warehouse_id if it's not "Directly In Store" and column exists
+                 if (!$isDirectlyInStore && in_array('warehouse_id', $productFifoColumns)) {
+                     $fifoData['warehouse_id'] = $warehouseId;
+                 }
+                 
+                 // Add purchase_date if column exists
+                 if (in_array('purchase_date', $productFifoColumns)) {
+                     $fifoData['purchase_date'] = $purchase->purchase_date;
+                 }
+                 
+                 // Check possible column names for price
+                 $priceColumnNames = ['price', 'unit_price', 'purchase_price', 'cost', 'price_per_unit'];
+                 $priceColumnName = null;
+                 
+                 foreach ($priceColumnNames as $columnName) {
+                     if (in_array($columnName, $productFifoColumns)) {
+                         $priceColumnName = $columnName;
+                         break;
+                     }
+                 }
+                 
+                 // If price column found, add to data
+                 if ($priceColumnName) {
+                     $fifoData[$priceColumnName] = $purchaseDetail->subtotal_price / $purchaseDetail->quantity;
+                 }
+                 
+                 // Add created_at and updated_at if they exist in product_fifo
+                 if (in_array('created_at', $productFifoColumns)) {
+                     $fifoData['created_at'] = now();
+                 }
+                 if (in_array('updated_at', $productFifoColumns)) {
+                     $fifoData['updated_at'] = now();
+                 }
+                 
+                 // Insert to product_fifo
+                 DB::table('product_fifo')->insert($fifoData);
+             }
+             
+             // Update in_order quantity (if exists)
+             if (property_exists($product, 'in_order_pembelian')) {
+                 $product->in_order_pembelian -= $validatedData['quantity_received'];
+             }
+             $product->save();
+             
+             // Prepare data for receive_history
+             $receiveData = [
+                 'purchase_id' => $validatedData['purchase_id'],
+                 'product_id' => $validatedData['product_id'],
+                 'quantity_received' => $validatedData['quantity_received'],
+                 'received_at' => now(),
+                 'created_at' => now(),
+                 'updated_at' => now()
+             ];
+             
+             // Add warehouse_id to receive_history if not "Directly In Store"
+             if (!$isDirectlyInStore) {
+                 $receiveData['warehouse_id'] = $warehouseId;
+             }
+             
+             // Check if warehouse_id column exists in receive_history
+             $receiveHistoryColumns = DB::getSchemaBuilder()->getColumnListing('receive_history');
+             if (!in_array('warehouse_id', $receiveHistoryColumns)) {
+                 // Remove warehouse_id if column doesn't exist
+                 unset($receiveData['warehouse_id']);
+             }
+             
+             // Insert to receive_history
+             DB::table('receive_history')->insert($receiveData);
+             
+             // Check if all items have been received
+             $allDetailsFulfilledForThisPurchase = true;
+             $purchaseDetails = DB::table('purchase_detail')->where('purchase_id', $purchase->id)->get();
+             
+             foreach ($purchaseDetails as $detail) {
+                 $detailTotal = $detail->quantity;
+                 
+                 // Use composite key to check receiving history
+                 $detailReceived = DB::table('receive_history')
+                     ->where('product_id', $detail->product_id)
+                     ->where('purchase_id', $detail->purchase_id)
+                     ->sum('quantity_received') ?? 0;
+                 
+                 if ($detailReceived < $detailTotal) {
+                     $allDetailsFulfilledForThisPurchase = false;
+                     break;
+                 }
+             }
+             
+             // If all items received, update receive_date in purchase
+             if ($allDetailsFulfilledForThisPurchase) {
+                 // Update purchase receive_date using query builder to avoid updated_at
+                 DB::table('purchase')
+                     ->where('id', $purchase->id)
+                     ->update(['receive_date' => now()]);
+                 
+                 DB::commit();
+                 return redirect()->route('purchase.receiving')->with('success', 'All items have been received successfully. Purchase marked as completed.');
+             }
+     
+             DB::commit();
+             $locationMsg = $isDirectlyInStore ? ' to main inventory' : ' into warehouse';
+             return redirect()->back()->with('success', 'Successfully received ' . $validatedData['quantity_received'] . ' units of ' . $product->name . $locationMsg);
+         } catch (\Exception $e) {
+             DB::rollBack();
+             \Log::error('Error in receiving: ' . $e->getMessage());
+             return redirect()->back()->with('error', 'Error processing reception: ' . $e->getMessage());
+         }
+     }
+    
     /**
      * Show the form for creating a new resource.
      */
@@ -247,10 +488,10 @@ class PurchaseController extends Controller
             \Log::info('Is supplier shipping: ' . ($isSupplierShipping ? 'true' : 'false'));
     
             // Set receive_date based on shipping method
-            $receiveDate = $isSupplierShipping ? null : now();
+            // $receiveDate = $isSupplierShipping ? null : now();
             
             // Add debugging
-            \Log::info('Receive date: ' . ($receiveDate ? $receiveDate : 'null'));
+            // \Log::info('Receive date: ' . ($receiveDate ? $receiveDate : 'null'));
     
             $noNota = 'PUR' . str_pad(DB::table('purchase')->max('id') + 1, 4, '0', STR_PAD_LEFT);
             
@@ -264,10 +505,11 @@ class PurchaseController extends Controller
                 'noNota' => $noNota,
                 'total_price' => $request->input('final_price'),
                 'purchase_date' => $request->input('purchase_date'),
-                'receive_date' => $receiveDate,
+                'receive_date' => $request->input('receive_date'),
                 'shipping_cost' => $request->input('shipping_cost', 0),
                 'payment_methods_id' => $request->input('payment_methods_id'),
                 'suppliers_id' => $request->input('supplier_id'),
+                'cogs_method' => $request->input('cogs_method'),
                 'warehouse_id' => $warehouseId,
             ]);
 
@@ -317,12 +559,14 @@ class PurchaseController extends Controller
                 }
 
                 // Update receive_date after shipping all stock
-                DB::table('purchase')
-                ->where('id', $purchaseId)
-                ->update(['receive_date' => now()]);
+                // DB::table('purchase')
+                // ->where('id', $purchaseId)
+                // ->update(['receive_date' => now()]);
                 
-                return redirect()->route('purchase.shipping');
+                return redirect()->route('purchase.receiving');
             }
+            // dd($isSupplierShipping);
+
 
             return redirect()->route('purchase.index')->with('success', 'Purchase has been created successfully');
 

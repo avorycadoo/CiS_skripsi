@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Models;
 
 use Carbon\Carbon;
@@ -18,39 +17,90 @@ class Sales extends Model
     public function updateInventory($cogsMethod, $products)
     {
         foreach ($products as $product) {
+            $productId = $product['product_id'];
+            $quantity  = $product['quantity'];
+
+            // Update main product stock
             if ($cogsMethod === 'fifo') {
-                $quantity = $product['quantity']; // Use quantity from the sales details
-                $productStocks = ProductFifo::where('product_id', $product['product_id'])
+                // Process FIFO inventory
+                $productStocks = ProductFifo::where('product_id', $productId)
                     ->orderBy('purchase_date', 'asc')
                     ->get();
 
-                $totalFifoStock = $productStocks->sum('stock'); // Calculate total FIFO stock
+                $totalFifoStock = $productStocks->sum('stock');
 
                 if ($totalFifoStock < $quantity) {
-                    // If FIFO stock is insufficient, throw an exception or return an error message
-                    throw new \Exception("Insufficient FIFO stock for product: " . $product['product_id']);
-                    // Alternatively, you can return an error message and handle it in the controller
-                    // return 'Insufficient FIFO stock for product: ' . $product['product_id'];
+                    throw new \Exception("Insufficient FIFO stock for product: " . $productId);
                 }
+
+                $remainingQty = $quantity;
                 foreach ($productStocks as $stock) {
-                    if ($quantity <= 0)
+                    if ($remainingQty <= 0) {
                         break;
+                    }
 
-                    $decrementQuantity = min($quantity, $stock->stock);
+                    $decrementQty = min($remainingQty, $stock->stock);
 
-                    if ($decrementQuantity > 0) {
-                        $stock->decrement('stock', $decrementQuantity);
-                        DB::table('product')
-                            ->where('id', $product['product_id'])
-                            ->decrement('stock', $decrementQuantity); // Decrement stock for sales
-
-                        $quantity -= $decrementQuantity;
+                    if ($decrementQty > 0) {
+                        $stock->decrement('stock', $decrementQty);
+                        $remainingQty -= $decrementQty;
                     }
                 }
-            } elseif ($cogsMethod === 'average') {
+
+                // Update main product table stock
                 DB::table('product')
-                    ->where('id', $product['product_id'])
-                    ->decrement('stock', $product['quantity']); // Decrement stock for sales
+                    ->where('id', $productId)
+                    ->decrement('stock', $quantity);
+            } elseif ($cogsMethod === 'average') {
+                // Only update the main product table for average costing
+                DB::table('product')
+                    ->where('id', $productId)
+                    ->decrement('stock', $quantity);
+            }
+
+            // DIRECTLY update product_has_warehouse stock - separated from COGS method logic
+            try {
+                // Get warehouses with stock for this product
+                $warehouseStocks = DB::table('product_has_warehouse')
+                    ->where('product_id', $productId)
+                    ->where('stock', '>', 0)
+                    ->orderBy('warehouse_id')
+                    ->get();
+
+                // Debug log to check what warehouses are found
+                \Log::info("Found " . count($warehouseStocks) . " warehouses with stock for product $productId");
+
+                $remainingToDecrement = $quantity;
+
+                foreach ($warehouseStocks as $warehouseStock) {
+                    if ($remainingToDecrement <= 0) {
+                        break;
+                    }
+
+                    $warehouseDecrementQty = min($remainingToDecrement, $warehouseStock->stock);
+
+                    // Debug log the decrement action
+                    \Log::info("Decrementing product $productId in warehouse {$warehouseStock->warehouse_id} by $warehouseDecrementQty units");
+
+                    $affected = DB::table('product_has_warehouse')
+                        ->where('product_id', $productId)
+                        ->where('warehouse_id', $warehouseStock->warehouse_id)
+                        ->decrement('stock', $warehouseDecrementQty);
+
+                    // Debug log to check if rows were affected
+                    \Log::info("Affected rows: $affected");
+
+                    $remainingToDecrement -= $warehouseDecrementQty;
+                }
+
+                // Log if we couldn't decrement all the requested quantity
+                if ($remainingToDecrement > 0) {
+                    \Log::warning("Could not decrement all requested quantity from warehouses. Remaining: $remainingToDecrement");
+                }
+            } catch (\Exception $e) {
+                // Log the exception but don't throw it to avoid interrupting the transaction
+                \Log::error("Error updating warehouse stock: " . $e->getMessage());
+                \Log::error($e->getTraceAsString());
             }
         }
     }
@@ -64,7 +114,6 @@ class Sales extends Model
     {
         return $this->hasMany(Sales_detail::class, 'sales_id', 'id'); // Ensure this is correct
     }
-
 
     public function paymentMethod()
     {
@@ -86,7 +135,7 @@ class Sales extends Model
             $nextNotaNumber = $lastNota ? (int) substr($lastNota->noNota, 3) + 1 : 1;
 
             $sales->noNota = 'INV' . str_pad($nextNotaNumber, 4, '0', STR_PAD_LEFT);
-            $sales->date = Carbon::now();
+            $sales->date   = Carbon::now();
         });
     }
 }

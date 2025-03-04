@@ -125,8 +125,8 @@
                         </div>
                         <div class="collapse" id="shippingCollapse">
                             <div class="card-body">
-                                <label for="shipped_date">Shipped Date</label>
-                                <input type="date" class="form-control" name="sales_shipdate" id="shipped_date">
+                                <label for="receive_date">Shipped Date</label>
+                                <input type="date" class="form-control" name="receive_date" id="receive_date">
                             </div>
 
                             @if ($activeShippings->isNotEmpty())

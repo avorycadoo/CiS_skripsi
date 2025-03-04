@@ -1,43 +1,116 @@
 @extends('layouts.conquer')
 
 @section('content')
-    <div class="container">
-        <h1>Product List</h1>
-        {{-- <a href="salesCreateShipping" class="btn btn-primary mb-3">Create Shipping</a> --}}
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Stock</th>
-                    <th>In Order</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach ($products as $product)
-                    <tr>
-                        <td>{{ $product->name }}</td>
-                        <td>{{ $product->stock }}</td>
-                        <td>{{ $product->in_order_pembelian }}</td>
-                        <td>
-                            <form action="{{ route('products.create-shipping-purchase', $product->id) }}" method="POST">
-                                @csrf
-                                <input type="hidden" name="product_id" value="{{ $product->id }}">
-                                <div class="input-group">
-                                    <input type="number" name="quantity_shipped" class="form-control" min="1"
-                                        required>
-                                    <button type="submit" class="btn btn-primary">Ship</button>
-                                </div>
-                            </form>
-                            <form action="{{ route('products.confirm-receipt-purchase', $product) }}" method="POST">
-                                @csrf
-                                <button type="submit" class="btn btn-success mt-2"
-                                    {{ $product->in_order_pembelian == 0 ? 'disabled' : '' }}>Confirm Receipt</button>
-                            </form>
-                        </td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
+    <div class="container mt-4">
+        <h1>Receiving Management</h1>
+
+        @if (session('success'))
+            <div class="alert alert-success">
+                {{ session('success') }}
+            </div>
+        @endif
+
+        @if (session('error'))
+            <div class="alert alert-danger">
+                {{ session('error') }}
+            </div>
+        @endif
+
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Pending Product Receive</h5>
+            </div>
+            <div class="card-body">
+                
+                @if (isset($pendingShipments) && $pendingShipments->count() > 0)
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Invoice</th>
+                                <th>Date</th>
+                                <th>Supplier</th>
+                                <th>Total Price</th>
+                                <th>Payment Method</th>
+                                <th>Warehouse</th>
+                                {{-- <th>COGS Method</th> --}}
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($pendingShipments as $purchase)
+                                <tr>
+                                    <td>{{ $purchase->noNota }}</td>
+                                    <td>{{ date('d M Y', strtotime($purchase->purchase_date)) }}</td>
+                                    <td>{{ $purchase->supplier->company_name }}</td>
+                                    <td>Rp {{ number_format($purchase->total_price, 2) }}</td>
+                                    <td>{{ $purchase->paymentMethod->name }}</td>
+                                    <td>{{ $purchase->warehouse ? $purchase->warehouse->name : 'Directly In Store' }}</td>
+                                    <td>
+                                        <span class="badge bg-warning text-dark">Pending Product Receive</span>
+                                    </td>
+                                    <td>
+                                        <a href="{{ route('purchase.ship-detail', $purchase->id) }}"
+                                            class="btn btn-primary btn-sm">Process Receive</a>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                @else
+                    <div class="alert alert-info">
+                        No pending Receives found.
+                    </div>
+                @endif
+
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Received Orders</h5>
+            </div>
+            <div class="card-body">
+                @if (isset($shippedOrders) && $shippedOrders->count() > 0)
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Invoice</th>
+                                <th>Date</th>
+                                <th>Supplier</th>
+                                <th>Warehouse</th>
+                                <th>Total Price</th>
+                                <th>Receive Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($shippedOrders as $purchase)
+                                <tr>
+                                    <td>{{ $purchase->noNota }}</td>
+                                    <td>{{ date('d M Y', strtotime($purchase->purchase_date)) }}</td>
+                                    <td>{{ $purchase->supplier->company_name }}</td>
+                                    <td>{{ $purchase->warehouse ? $purchase->warehouse->name : 'Directly In Store' }}</td>
+                                    {{-- @php
+                                        dd($purchase->warehouse->address);
+                                    @endphp --}}
+                                    <td>Rp {{ number_format($purchase->total_price, 2) }}</td>
+                                    <td>{{ date('d M Y', strtotime($purchase->receive_date)) }}</td>
+                                    <td>
+                                        <a href="{{ route('purchase.detail', $purchase->id) }}"
+                                            class="btn btn-info btn-sm">View Details</a>
+                                    </td>
+                                </tr>
+                            @endforeach
+
+                        </tbody>
+                    </table>
+                @else
+                    <div class="alert alert-info">
+                        No received orders found.
+                    </div>
+                @endif
+            </div>
+        </div>
     </div>
 @endsection

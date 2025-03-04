@@ -35,11 +35,8 @@ Route::get('/register', [AuthController::class, 'register'])->name('register');
 Route::post('/register', [AuthController::class, 'registerPost'])->name('registerPost');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-
 Route::middleware('auth')->group(function () {
-
     Route::resource('customer', CustomerController::class);
-
     Route::post('/customer/store/new', [CustomerController::class, 'storeNew'])->name('customer.store.new');
     Route::resource('employe', EmployeeController::class);
     Route::resource('companies', CompaniesController::class);
@@ -52,21 +49,13 @@ Route::middleware('auth')->group(function () {
     Route::resource('salesRetur', SalesReturController::class);
     Route::resource('purchaseRetur', PurchaseReturController::class);
     Route::resource('/', HomeController::class);
-    // Route::resource('image', ProductImageController::class);
-
+    
     Route::get('/sales/invoice/{noNota}', [SalesController::class, 'showByNoNota'])->name('sales.showByNoNota');
-
     Route::get('/sales/{id}/detail', [SalesController::class, 'detail'])->name('sales.detail');
     Route::get('/purchase/{id}/detail', [PurchaseController::class, 'detail'])->name('purchase.detail');
-
-    // Route::get('/', function () {
-    //     return view('welcome');
-    // });
-
     Route::get('/penjualan', function () {
         return view('sales.nota');
     });
-
     Route::get('/salesKonfigurasi', [SalesController::class, 'dataKonfigurasi'])->name('sales.konfigurasi');
     Route::post('/sales/updateConfiguration', [SalesController::class, 'updateConfiguration'])->name('sales.updateConfiguration');
 
@@ -81,26 +70,23 @@ Route::middleware('auth')->group(function () {
     Route::get('/get-total-quantity', [SalesReturController::class, 'getTotalQuantity']);
     Route::get('/retur/{id}/detailSales', [SalesReturController::class, 'detail'])->name('salesRetur.detail');
     Route::post('/retur/{id}/update-status', [SalesReturController::class, 'updateStatus'])->name('salesRetur.updateStatus');
-
     Route::get('/retur/{id}/detailPurchase', [PurchaseReturController::class, 'detail'])->name('purchaseRetur.detail');
     Route::get('/purchase/{id}/details', [PurchaseReturController::class, 'getPurchaseDetails']);
     Route::get('/purchase/{purchaseId}/details/{productId}', [PurchaseReturController::class, 'getProductDetails']);
-
-
     Route::get('product/uploadPhoto/{id}', [ProductImageController::class, 'uploadPhoto'])->name('image.formUploadPhoto');
     Route::post('product/simpanPhoto', [ProductImageController::class, 'simpanPhoto']);
 
     //route buat sales shipping
-    Route::post('/products/create-shipping', [ProductController::class, 'createShipping'])->name('products.create-shipping');
-    Route::post('/products/{product}/confirm-receipt', [ProductController::class, 'confirmReceipt'])->name('products.confirm-receipt');
-    Route::get('/salesShipping', [SalesController::class, 'shipping'])->name('sales.shipping');
-    Route::get('/salesCreateShipping', [SalesController::class, 'createShipping'])->name('sales.createShipping');
+    Route::get('salesShipping', [SalesController::class, 'shipping'])->name('sales.shipping');
+    Route::get('sales/{id}/ship-detail', [SalesController::class, 'shipDetail'])->name('sales.ship-detail');
+    Route::post('products/create-shipping', [SalesController::class, 'createShipping'])->name('products.create-shipping');
+    Route::post('sales/{id}/ship-all', [SalesController::class, 'shipAll'])->name('sales.ship-all');
 
     //route buat purchase shipping
-    Route::post('/products/create-shipping-purchase', [ProductController::class, 'createShippingPurchase'])->name('products.create-shipping-purchase');
-    Route::post('/products/{product}/confirm-receipt-purchase', [ProductController::class, 'confirmReceiptPurchase'])->name('products.confirm-receipt-purchase');
-    Route::get('/purchaseShipping', [PurchaseController::class, 'shipping'])->name('purchase.shipping');
-    Route::get('/purchaseCreateShipping', [PurchaseController::class, 'createShipping'])->name('purchase.createShipping');
+    Route::get('purchaseShipping', [PurchaseController::class, 'shipping'])->name('purchase.receiving');
+    Route::get('purchase/{id}/ship-detail', [PurchaseController::class, 'shipDetail'])->name('purchase.ship-detail');
+    Route::post('products/create-receive', [PurchaseController::class, 'createReceiving'])->name('purchase.create-receiving');
+    Route::post('purchase/{id}/ship-all', [PurchaseController::class, 'shipAll'])->name('purchase.receive-all');
 
     Route::get('pos', [PosController::class, 'index'])->name('pos.index');
     Route::post('pos/store', [PosController::class, 'store'])->name('pos.store');

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Categories;
+use App\Models\detailKonfigurasi;
 use App\Models\Product;
 use App\Models\Product_Image;
 use App\Models\ProductFifo;
@@ -71,7 +72,9 @@ class ProductController extends Controller
      */
 
     public function store(Request $request)
-    {
+    {   
+        // $cogs = detailKonfigurasi::where('konfigurasi_id', 8)
+        
         $data = new Product();
         $data->name = $request->get('product_name');
         $data->desc = $request->get('product_desc');
