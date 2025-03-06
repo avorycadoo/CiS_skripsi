@@ -313,27 +313,52 @@ class PurchaseController extends Controller
         // Generate invoice number
         $lastInvoice = Purchase::orderBy('id', 'desc')->first();
         $newNumber = $lastInvoice ? (int) substr($lastInvoice->noNota, 3) + 1 : 1;
-
+    
         // Fetch suppliers, payment methods, and products
         $suppliers = Suppliers::all();
         $paymentMethods = Payment_Methods::all();
         $products = Product::all();
         $warehouses = Warehouse::all();
+        
+        // Get active warehouses
         $activeWarehouses = DB::table('detailkonfigurasi')
             ->where('konfigurasi_id', 6)
             ->where('statusActive', 1)
             ->get();
+            
+        // Get warehouse options (Multi-warehouse and Directly in store)
+        $warehouseOptions = DB::table('detailkonfigurasi')
+            ->whereIn('id', [14, 15]) // ID 14 for Multi-warehouse, ID 15 for Directly in store
+            ->where('statusActive', 1)
+            ->get();
+            
         $activeShippings = DB::table('detailkonfigurasi')
             ->where('konfigurasi_id', 4)
             ->where('statusActive', 1)
             ->get();
-
+            
+        $activePayments = DB::table('detailkonfigurasi')
+            ->where('konfigurasi_id', 5)
+            ->where('statusActive', 1)
+            ->get();
+            
         $activeCogs = DB::table('detailkonfigurasi')
             ->where('konfigurasi_id', 7)
             ->where('statusActive', 1)
             ->get();
-
-        return view('purchase.create', compact('newNumber', 'suppliers', 'paymentMethods', 'warehouses', 'products', 'activeWarehouses', 'activeShippings', 'activeCogs'));
+    
+        return view('purchase.create', compact(
+            'newNumber', 
+            'suppliers', 
+            'paymentMethods', 
+            'warehouses', 
+            'products', 
+            'activeWarehouses', 
+            'activeShippings', 
+            'activePayments', 
+            'activeCogs',
+            'warehouseOptions'
+        ));
     }
 
     public function detail($id)
@@ -512,24 +537,42 @@ class PurchaseController extends Controller
                 'cogs_method' => $request->input('cogs_method'),
                 'warehouse_id' => $warehouseId,
             ]);
-
+    
             $products = json_decode($request->input('products'), true);
+            
+            // Group by product_id to handle any potential duplicates that might still occur
+            $groupedProducts = [];
             foreach ($products as $product) {
+                $productId = $product['product_id'];
+                if (!isset($groupedProducts[$productId])) {
+                    $groupedProducts[$productId] = $product;
+                } else {
+                    // If the product already exists, sum the quantities
+                    $groupedProducts[$productId]['quantity'] += $product['quantity'];
+                    // Recalculate subtotal based on the updated quantity
+                    $groupedProducts[$productId]['subtotal_price'] = $groupedProducts[$productId]['price'] * $groupedProducts[$productId]['quantity'];
+                }
+            }
+            
+            foreach ($groupedProducts as $product) {
+                // Calculate subtotal price
+                $subtotalPrice = $product['price'] * $product['quantity'];
+                
                 // Insert purchase detail
                 DB::table('purchase_detail')->insert([
                     'product_id' => $product['product_id'],
                     'purchase_id' => $purchaseId,
-                    'subtotal_price' => $product['price'] * $product['quantity'],
+                    'subtotal_price' => $subtotalPrice,
                     'quantity' => $product['quantity'],
                 ]);
-
+    
                 // Handle warehouse stock if multi-warehouse
                 if ($request->input('warehouse_option') === 'multi' && $warehouseId) {
                     $existingRecord = DB::table('product_has_warehouse')
                         ->where('product_id', $product['product_id'])
                         ->where('warehouse_id', $warehouseId)
                         ->first();
-
+    
                     if ($existingRecord) {
                         DB::table('product_has_warehouse')
                             ->where('product_id', $product['product_id'])
@@ -544,37 +587,24 @@ class PurchaseController extends Controller
                     }
                 }
             }
-
+    
             if (!$isSupplierShipping) {
                 // Update inventory with the selected COGS method
                 $purchase = Purchase::find($purchaseId);
-                $purchase->updateInventory($request->input('cogs_method'), $products);
+                $purchase->updateInventory($request->input('cogs_method'), array_values($groupedProducts));
             }
-
+    
             if ($isSupplierShipping) {
-                foreach ($products as $product) {
+                foreach ($groupedProducts as $product) {
                     $purchasedProduct = Product::find($product['product_id']);
                     $purchasedProduct->in_order_pembelian += $product['quantity'];
                     $purchasedProduct->save();
                 }
-
-                // Update receive_date after shipping all stock
-                // DB::table('purchase')
-                // ->where('id', $purchaseId)
-                // ->update(['receive_date' => now()]);
                 
                 return redirect()->route('purchase.receiving');
             }
-            // dd($isSupplierShipping);
-
-
+    
             return redirect()->route('purchase.index')->with('success', 'Purchase has been created successfully');
-
-            // Update inventory dengan COGS method yang sudah diformat
-            // $purchase = Purchase::find($purchaseId);
-            // $purchase->updateInventory($request->input('cogs_method'), $products);
-
-            // return redirect()->route('purchase.index')->with('success', 'Purchase has been created successfully');
         
         } catch (\Exception $e) {
             \Log::error('Purchase creation error: ' . $e->getMessage());

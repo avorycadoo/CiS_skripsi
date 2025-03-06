@@ -84,40 +84,40 @@ class SalesReturController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
-    {
-        // Fetch all customers
-        $customers = Customer::all();
+        public function create()
+        {
+            // Fetch all customers
+            $customers = Customer::all();
 
-        // Fetch sales data to use for autofilling invoice and purchase date
-        $sales = Sales::with('customer')->get(); // Assuming you have a Sale model
+            // Fetch sales data to use for autofilling invoice and purchase date
+            $sales = Sales::with('customer')->get(); // Assuming you have a Sale model
 
-        // Fetch sales details to get products that can be returned
-        $salesDetails = Sales_detail::with(['product', 'sales.customer'])->get();
+            // Fetch sales details to get products that can be returned
+            $salesDetails = Sales_detail::with(['product', 'sales.customer'])->get();
 
-        // Group sales by customer
-        $salesByCustomer = [];
-        foreach ($sales as $sale) {
-            $salesByCustomer[$sale->customers_id][] = $sale;
-        }
-
-        // Prepare an array to hold products for each sale
-        $productsBySale = [];
-        foreach ($salesDetails as $detail) {
-            if (!isset($productsBySale[$detail->sales_id])) {
-                $productsBySale[$detail->sales_id] = [];
+            // Group sales by customer
+            $salesByCustomer = [];
+            foreach ($sales as $sale) {
+                $salesByCustomer[$sale->customers_id][] = $sale;
             }
-            // Include total_quantity in the product details
-            $productsBySale[$detail->sales_id][] = [
-                'product_id' => $detail->product_id,
-                'product' => $detail->product, // Assuming this includes the product name
-                'total_quantity' => $detail->total_quantity // Fetch total_quantity from sales_detail
-            ];
-        }
 
-        // Pass the sales details, customers, and products by sale to the view
-        return view('salesRetur.create', compact('salesDetails', 'customers', 'sales', 'salesByCustomer', 'productsBySale'));
-    }
+            // Prepare an array to hold products for each sale
+            $productsBySale = [];
+            foreach ($salesDetails as $detail) {
+                if (!isset($productsBySale[$detail->sales_id])) {
+                    $productsBySale[$detail->sales_id] = [];
+                }
+                // Include total_quantity in the product details
+                $productsBySale[$detail->sales_id][] = [
+                    'product_id' => $detail->product_id,
+                    'product' => $detail->product, // Assuming this includes the product name
+                    'total_quantity' => $detail->total_quantity // Fetch total_quantity from sales_detail
+                ];
+            }
+
+            // Pass the sales details, customers, and products by sale to the view
+            return view('salesRetur.create', compact('salesDetails', 'customers', 'sales', 'salesByCustomer', 'productsBySale'));
+        }
 
     /**
      * Store a newly created resource in storage.

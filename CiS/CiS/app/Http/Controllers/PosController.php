@@ -157,9 +157,16 @@ class PosController extends Controller
     public function print($id)
     {
         $sales = Sales::where('id', $id)->with('salesDetail', 'paymentMethod', 'customer', 'salesDetail.product')->first();
-        $pdf = Pdf::loadView('pos.print', compact('sales'))
-            ->setPaper([0, 0, 250, 600], 'portrait');
-
+        
+        // Fetch the company information from the companies table
+        $company = DB::table('companies')->first();
+        
+        // Increase the paper size to properly fit all content
+        // Width: 250 points (about 88mm for thermal receipt)
+        // Height: 800 points (increased from 600 to accommodate all content)
+        $pdf = Pdf::loadView('pos.print', compact('sales', 'company'))
+            ->setPaper([0, 0, 250, 800], 'portrait');
+    
         return $pdf->stream('bukti-pembayaran.pdf');
     }
 }

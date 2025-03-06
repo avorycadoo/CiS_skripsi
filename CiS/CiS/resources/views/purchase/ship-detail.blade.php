@@ -35,7 +35,7 @@
                         <h6>Supplier Information</h6>
                         <p><strong>Name:</strong> {{ $purchase->supplier->company_name ?? 'N/A' }}</p>
                         <p><strong>Address:</strong> {{ $purchase->supplier->address ?? 'N/A' }}</p>
-                        <p><strong>Phone:</strong> {{ $purchase->supplier->phone ?? 'N/A' }}</p>
+                        <p><strong>Phone:</strong> {{ $purchase->supplier->phone_number ?? 'N/A' }}</p>
                     </div>
                     <div class="col-md-6">
                         <h6>Purchase Information</h6>

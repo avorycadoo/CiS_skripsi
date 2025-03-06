@@ -58,56 +58,82 @@ class ProductController extends Controller
     public function create()
     {
         $categories = Categories::all(); // Ambil semua kategori
-        $suppliers = Suppliers::all(); // Ambil semua kategori
-        $product_image = Product_Image::all(); // Ambil semua kategori
-        $warehouses = Warehouse::all();
+        $suppliers = Suppliers::all(); // Ambil semua supplier
+        $product_image = Product_Image::all(); // Ambil semua gambar produk
+        
+        // Get all warehouses from the warehouse table
+        $warehouses = Warehouse::all(); // Ambil semua warehouse
+        
         $products = Product::with('productImage')->get();
+        
+        // Get active warehouses
+        $activeWarehouses = DB::table('detailkonfigurasi')
+            ->where('konfigurasi_id', 6)
+            ->where('statusActive', 1)
+            ->get();
+        
+        // Get warehouse options (Multi-warehouse and Directly in store)
+        $warehouseOptions = DB::table('detailkonfigurasi')
+            ->whereIn('id', [14, 15]) // ID 14 for Multi-warehouse, ID 15 for Directly in store
+            ->where('statusActive', 1)
+            ->get();
+        
         // Check for uploaded image in the session
         $uploadedImage = session('uploaded_image');
-        return view('product.create', compact('categories', 'suppliers', 'product_image', 'warehouses', 'products', 'uploadedImage'));
+        
+        return view('product.create', compact(
+            'categories', 
+            'suppliers', 
+            'product_image', 
+            'warehouses', 
+            'products', 
+            'uploadedImage',
+            'activeWarehouses',
+            'warehouseOptions'
+        ));
     }
 
     /**
      * Store a newly created resource in storage.
      */
 
-    public function store(Request $request)
-    {   
-        // $cogs = detailKonfigurasi::where('konfigurasi_id', 8)
-        
-        $data = new Product();
-        $data->name = $request->get('product_name');
-        $data->desc = $request->get('product_desc');
-        $data->price = $request->get('product_price');
-        $data->cost = $request->get('product_cost');
-        $data->stock = $request->get('product_stock');
-        // $data->cogs_methods = 'fifo'; // Menggunakan FIFO tetap
-        $data->minimum_stock = $request->get('product_minstock');
-        $data->maksimum_retur = $request->get('product_maksretur');
-        $data->status_active = '1';
-        $data->categories_id = $request->get('product_category_id');
-        $data->product_image_id = $request->get('product_image_id') ?: null; // Allow null if no image is selected
-        $data->suppliers_id = $request->get('product_supplier_id');
-
-        $data->save();
-
-        // Save to product_has_warehouse
-        $warehouseId = $request->get('product_warehouse_id');
-        $stock = $request->get('product_stock'); // Assuming you want to set the initial stock
-
-        if ($warehouseId) {
-            DB::table('product_has_warehouse')->insert([
-                'product_id' => $data->id,
-                'warehouse_id' => $warehouseId,
-                'stock' => $stock,
-            ]);
-        }
-
-        $data->in_order_sales = 0;
-        $data->save();
-        
-        return redirect()->route("product.index")->with('status', "Horray, Your new product data is already inserted");
-    }
+     public function store(Request $request)
+     {           
+         $data = new Product();
+         $data->name = $request->get('product_name');
+         $data->desc = $request->get('product_desc');
+         $data->price = $request->get('product_price');
+         $data->cost = $request->get('product_cost');
+         $data->stock = $request->get('product_stock');
+         $data->minimum_stock = $request->get('product_minstock');
+         $data->maksimum_retur = $request->get('product_maksretur');
+         $data->status_active = '1';
+         $data->categories_id = $request->get('product_category_id');
+         $data->product_image_id = $request->get('product_image_id') ?: null; // Allow null if no image is selected
+         $data->suppliers_id = $request->get('product_supplier_id');
+        //  $data->in_order_sales = 0;
+     
+         $data->save();
+     
+         // Check warehouse option
+         $warehouseOption = $request->get('warehouse_option');
+         
+         // Save to product_has_warehouse only if multi-warehouse is selected
+         if ($warehouseOption === 'multi') {
+             $warehouseId = $request->get('product_warehouse_id');
+             $stock = $request->get('product_stock');
+     
+             if ($warehouseId) {
+                 DB::table('product_has_warehouse')->insert([
+                     'product_id' => $data->id,
+                     'warehouse_id' => $warehouseId,
+                     'stock' => $stock,
+                 ]);
+             }
+         }
+         
+         return redirect()->route("product.index")->with('status', "Horray, Your new product data is already inserted");
+     }
 
 
     public function createShipping(Request $request)

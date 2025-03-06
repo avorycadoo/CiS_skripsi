@@ -1,25 +1,6 @@
 @extends('layouts.conquer')
 
 @section('content')
-<!-- Add this at the beginning of your blade file, below @section('content') -->
-    <!--
-                        <div class="container">
-                            <div class="alert alert-info">
-                                <h5>Debug Information (Remove in production)</h5>
-                                <ul>
-                                    @foreach ($sale->salesDetail as $detail)
-    <li>
-                                            Detail ID: {{ $detail->id ?? 'Not set' }}
-                                            | Product ID: {{ $detail->product_id ?? 'Not set' }}
-                                            | Total Quantity: {{ $detail->total_quantity ?? 'Not set' }}
-                                        </li>
-    @endforeach
-                                </ul>
-                            </div>
-                        </div>
-                        -->
-
-    <!-- Also add this to show validation errors at the top of your page -->
     @if ($errors->any())
         <div class="alert alert-danger">
             <ul>
@@ -54,7 +35,7 @@
                         <h6>Customer Information</h6>
                         <p><strong>Name:</strong> {{ $sale->customer->name }}</p>
                         <p><strong>Address:</strong> {{ $sale->customer->address ?? 'N/A' }}</p>
-                        <p><strong>Phone:</strong> {{ $sale->customer->phone ?? 'N/A' }}</p>
+                        <p><strong>Phone:</strong> {{ $sale->customer->phone_number ?? 'N/A' }}</p>
                     </div>
                     <div class="col-md-6">
                         <h6>Order Information</h6>
@@ -62,16 +43,40 @@
                         <p><strong>Date:</strong> {{ date('d M Y', strtotime($sale->date)) }}</p>
                         <p><strong>Total:</strong> Rp {{ number_format($sale->total_price, 2) }}</p>
                         <p><strong>Payment Method:</strong> {{ $sale->paymentMethod->name }}</p>
-                        @php
-                            $cogsMethodName = DB::table('detailkonfigurasi')
-                                ->where('id', $sale->cogs_method_id)
-                                ->value('name');
-                        @endphp
-                        {{-- <p><strong>COGS Method:</strong> {{ $cogsMethodName}}</p> --}}
+                    </div>
+                </div>
+
+                <!-- Move Shipping Details section outside the product loop -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Shipping Details</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="global_shipping_address">Shipping Address (Optional)</label>
+                                            <textarea id="global_shipping_address" class="form-control global-shipping-field" rows="3"
+                                                placeholder="Leave empty to use customer's address: {{ $sale->customer->address ?? 'N/A' }}"></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="global_recipients_name">Recipient's Name (Optional)</label>
+                                            <input type="text" id="global_recipients_name" class="form-control global-shipping-field"
+                                                placeholder="Leave empty to use customer's name: {{ $sale->customer->name ?? 'N/A' }}">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <h6 class="mb-3">Order Items</h6>
+
                 <div class="table-responsive">
                     <table class="table table-bordered">
                         <thead class="table-light">
@@ -138,49 +143,17 @@
                                             @csrf
                                             <input type="hidden" name="product_id" value="{{ $product->id }}">
                                             <input type="hidden" name="sale_id" value="{{ $sale->id }}">
-                                            <!-- Gunakan product_id dan sales_id dari detail sebagai identifier -->
-                                            <input type="hidden" name="detail_product_id"
-                                                value="{{ $detail->product_id }}">
+                                            <input type="hidden" name="detail_product_id" value="{{ $detail->product_id }}">
                                             <input type="hidden" name="detail_sales_id" value="{{ $detail->sales_id }}">
+                                            <!-- Hidden fields that will be filled from global shipping details -->
+                                            <input type="hidden" name="shipping_address" class="shipping-address-field">
+                                            <input type="hidden" name="recipients_name" class="recipients-name-field">
 
                                             <input type="number" name="quantity_shipped" class="form-control"
                                                 min="1" max="{{ $maxShippable }}"
                                                 value="{{ $maxShippable > 0 ? $maxShippable : 0 }}"
                                                 {{ $maxShippable <= 0 ? 'disabled' : '' }}>
                                     </td>
-                                    <!-- Tambahkan kode ini ke dalam form pengiriman di file ship-detail.blade.php -->
-                                    <!-- Letakkan di bawah tabel sebelum tombol "Ship" -->
-
-                                    <div class="row mt-4">
-                                        <div class="col-md-12">
-                                            <div class="card">
-                                                <div class="card-header">
-                                                    <h6 class="mb-0">Shipping Details</h6>
-                                                </div>
-                                                <div class="card-body">
-                                                    <div class="row">
-                                                        <div class="col-md-6">
-                                                            <div class="form-group">
-                                                                <label for="shipping_address">Shipping Address
-                                                                    (Optional)</label>
-                                                                <textarea name="shipping_address" id="shipping_address" class="form-control" rows="3"
-                                                                    placeholder="Leave empty to use customer's address: {{ $sale->customer->address ?? 'N/A' }}"></textarea>
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-md-6">
-                                                            <div class="form-group">
-                                                                <label for="recipients_name">Recipient's Name
-                                                                    (Optional)</label>
-                                                                <input type="text" name="recipients_name"
-                                                                    id="recipients_name" class="form-control"
-                                                                    placeholder="Leave empty to use customer's name: {{ $sale->customer->name ?? 'N/A' }}">
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
                                     <td>
                                         <button type="submit" class="btn btn-primary ship-btn"
                                             {{ $maxShippable <= 0 ? 'disabled' : '' }}>
@@ -193,8 +166,6 @@
                         </tbody>
                     </table>
                 </div>
-
-
 
                 <div class="mt-4">
                     <div class="alert alert-info">
@@ -219,7 +190,10 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Validation to prevent shipping more than available
             const shippingForms = document.querySelectorAll('.shipping-form');
+            const globalShippingAddressField = document.getElementById('global_shipping_address');
+            const globalRecipientsNameField = document.getElementById('global_recipients_name');
 
+            // Copy shipping details from global fields to individual form fields on submit
             shippingForms.forEach(form => {
                 form.addEventListener('submit', function(e) {
                     const quantityInput = this.querySelector('input[name="quantity_shipped"]');
@@ -229,11 +203,17 @@
                     if (quantity <= 0) {
                         e.preventDefault();
                         alert('Shipping quantity must be greater than zero.');
+                        return;
                     } else if (quantity > max) {
                         e.preventDefault();
                         alert('Cannot ship more than available to ship for this invoice.');
                         quantityInput.value = max;
+                        return;
                     }
+
+                    // Copy shipping details from global fields to this specific form
+                    this.querySelector('.shipping-address-field').value = globalShippingAddressField.value;
+                    this.querySelector('.recipients-name-field').value = globalRecipientsNameField.value;
                 });
             });
 

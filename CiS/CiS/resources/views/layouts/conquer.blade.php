@@ -89,7 +89,7 @@
                 </div>
             </li>
 
-            <li class="nav-item active">
+            <li class="nav-item">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#purchaseModuleMenu"
                     aria-expanded="false" aria-controls="purchaseModuleMenu">
                     <i class="fas fa-fw fa-shopping-cart"></i>
@@ -105,7 +105,7 @@
 
                         <a class="collapse-item" href="purchaseShipping">
                             <i class="fas fa-fw fa-truck"></i>
-                            <span>Shipping</span>
+                            <span>Receive</span>
                         </a>
 
                         <a class="collapse-item" href="purchaseKonfigurasi">

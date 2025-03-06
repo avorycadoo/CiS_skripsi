@@ -4,7 +4,7 @@
     <div class="container mt-5">
         <h2 class="text-center mb-4">Create Purchase</h2>
 
-        <form method="POST" action="{{ route('purchase.store') }}">
+        <form method="POST" action="{{ route('purchase.store') }}" id="purchaseForm">
             @csrf
             <div class="card shadow-sm">
                 <div class="card-body">
@@ -35,38 +35,63 @@
                         <small class="form-text text-muted">Please select the date of the purchase.</small>
                     </div>
 
-                    <!-- Receive Date Section -->
-                    {{-- <div class="form-group">
-                        <label for="receive_date">Receive Date</label>
-                        <input type="date" class="form-control" name="receive_date" required>
-                        <small class="form-text text-muted">Please select the date of receiving the products.</small>
-                    </div> --}}
+                    <!-- Dynamic Warehouse Configuration -->
+                    @if (isset($warehouseOptions) && $warehouseOptions->count() > 0)
+                        <div class="form-group">
+                            <label for="warehouse_selection">Select Warehouse Option:</label><br>
 
-                    <div class="form-group">
-                        <label for="warehouse_selection">Select Warehouse Option:</label><br>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="warehouse_option" id="multiWarehouse"
-                                value="multi" checked>
-                            <label class="form-check-label" for="multiWarehouse">Multi-warehouse</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="warehouse_option" id="directlyInStore"
-                                value="direct">
-                            <label class="form-check-label" for="directlyInStore">Directly in store</label>
-                        </div>
-                    </div>
+                            @php
+                                $multiWarehouseOption = $warehouseOptions->where('id', 14)->first();
+                                $directlyInStoreOption = $warehouseOptions->where('id', 15)->first();
+                            @endphp
 
-                    <div id="warehouseDropdown" class="form-group mt-3">
-                        <label for="warehouse_id">Select Warehouse:</label>
-                        <select class="form-control" name="warehouse_id" id="warehouse_id">
-                            <option value="" disabled selected>Select Your Warehouse</option>
-                            @foreach ($warehouses as $warehouse)
-                                <option value="{{ $warehouse->id }}">{{ $warehouse->name }}</option>
-                            @endforeach
-                        </select>
-                        <small id="warehouseHelp" class="form-text text-muted">Please select a warehouse if
-                            Multi-warehouse is selected.</small>
-                    </div>
+                            @if ($multiWarehouseOption)
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="warehouse_option"
+                                        id="multiWarehouse" value="multi" {{ $multiWarehouseOption ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="multiWarehouse">
+                                        Multi-warehouse
+                                    </label>
+                                    <div>
+                                        <small class="text-muted">{{ $multiWarehouseOption->desc }}</small>
+                                    </div>
+                                </div>
+                            @endif
+
+                            @if ($directlyInStoreOption)
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="warehouse_option"
+                                        id="directlyInStore" value="direct"
+                                        {{ !$multiWarehouseOption && $directlyInStoreOption ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="directlyInStore">
+                                        Directly in store
+                                    </label>
+                                    <div>
+                                        <small class="text-muted">{{ $directlyInStoreOption->desc }}</small>
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+
+                        @if ($multiWarehouseOption)
+                            <div id="warehouseDropdown" class="form-group mt-3"
+                                {{ !$multiWarehouseOption ? 'style="display:none;"' : '' }}>
+                                <label for="warehouse_id">Select Warehouse:</label>
+                                <select class="form-control" name="warehouse_id" id="warehouse_id">
+                                    <option value="" disabled selected>Select Your Warehouse</option>
+                                    @foreach ($warehouses as $warehouse)
+                                        <option value="{{ $warehouse->id }}">{{ $warehouse->name }}</option>
+                                    @endforeach
+                                </select>
+                                <small id="warehouseHelp" class="form-text text-muted">Please select a warehouse if
+                                    Multi-warehouse is selected.</small>
+                            </div>
+                        @endif
+                    @else
+                        <div class="alert alert-warning">
+                            No warehouse options are currently active. Please contact the administrator.
+                        </div>
+                    @endif
 
                     <!-- Product Selection -->
                     <h5 class="mt-4">Product Selection</h5>
@@ -159,17 +184,22 @@
                     <input type="hidden" name="final_price" id="final_price">
 
                     <!-- Payment Method Section -->
-                    <div class="form-group">
-                        <label for="payment_methods_id">Select Payment Method:</label>
-                        <select class="form-control" name="payment_methods_id" required>
-                            <option value="">Select Payment Method</option>
-                            @foreach ($paymentMethods as $paymentMethod)
-                                <option value="{{ $paymentMethod->id }}">{{ $paymentMethod->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+                    @if ($activePayments->isNotEmpty())
+                        <div class="form-group">
+                            <label for="payment_methods_id">Payment Method</label>
+                            <select class="form-control" name="payment_methods_id" required>
+                                <option value="">Select Payment Method</option>
+                                @foreach ($activePayments as $paymentMethod)
+                                    <option value="{{ $paymentMethod->id }}">{{ $paymentMethod->name }}</option>
+                                @endforeach
+                            </select>
+                            <small id="paymentMethodHelp" class="form-text text-muted">Please select a payment
+                                method</small>
+                        </div>
+                    @else
+                        <p>No active Payment available.</p>
+                    @endif
 
-                    <!-- COGS Method Section -->
                     <!-- COGS Method Section -->
                     <div class="form-group">
                         <label for="cogs_method">Select Cogs Method:</label>
@@ -183,65 +213,38 @@
                         </select>
                     </div>
 
-                    {{-- <div class="form-group">
-                        <label for="warehouse_selection">Select Warehouse Option:</label><br>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="warehouse_option" id="multiWarehouse"
-                                value="multi" checked>
-                            <label class="form-check-label" for="multiWarehouse">Multi-warehouse</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="warehouse_option" id="directlyInStore"
-                                value="direct">
-                            <label class="form-check-label" for="directlyInStore">Directly in store</label>
-                        </div>
-                    </div>
-
-                    <div id="warehouseDropdown" class="form-group mt-3">
-                        <label for="warehouse_id">Select Warehouse:</label>
-                        <select class="form-control" name="warehouse_id" id="warehouse_id">
-                            <option value="" disabled selected>Select Your Warehouse</option>
-                            @foreach ($warehouses as $warehouse)
-                                <option value="{{ $warehouse->id }}">{{ $warehouse->name }}</option>
-                            @endforeach
-                        </select>
-                        <small id="warehouseHelp" class="form-text text-muted">Please select a warehouse if
-                            Multi-warehouse is selected.</small>
-                    </div> --}}
-
-                    {{-- @if ($activeWarehouses->isNotEmpty())
-                        <div class="form-group">
-                            <label for="warehouse_id">Warehouse</label>
-                            <select class="form-control" name="warehouse_id" required>
-                                <option value="">Select Warehouse</option>
-                                @foreach ($activeWarehouses as $activeWarehouse)
-                                    <option value="{{ $activeWarehouse->id }}">{{ $activeWarehouse->name }}</option>
-                                @endforeach
-                            </select>
-                            <small id="paymentMethodHelp" class="form-text text-muted">Please select a warehouse</small>
-                        </div>
-                    @else
-                        <p>No active Warehouse available.</p>
-                    @endif --}}
-                    {{-- <div class="form-group">
-                        <label for="warehouse_id">Select Warehouse</label>
-                        <select class="form-control" name="warehouse_id" required>
-                            <option value="" disabled selected>Select Your Warehouse</option>
-                            @foreach ($warehouses as $warehouse)
-                                <option value="{{ $warehouse->id }}">{{ $warehouse->name }}</option>
-                            @endforeach
-                        </select>
-                        <small class="form-text text-muted">Choose a warehouse to store your product purchases.</small>
-                    </div> --}}
-
                     <div class="d-flex justify-content-end mt-4">
                         <a class="btn btn-info me-2" href="{{ url()->previous() }}">Cancel</a>
-                        <button type="submit" class="btn btn-primary">Submit</button>
+                        <button type="button" class="btn btn-primary" onclick="showConfirmation()">Submit</button>
                     </div>
                 </div>
             </div>
         </form>
     </div>
+
+    <!-- Custom Modal Dialog -->
+    <div id="customModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 1000; overflow: auto;">
+        <div
+            style="background-color: white; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 50%; border-radius: 5px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h4 style="margin: 0;">Konfirmasi</h4>
+                <span onclick="hideConfirmation()"
+                    style="cursor: pointer; font-size: 20px; font-weight: bold;">&times;</span>
+            </div>
+            <div id="modalContent" style="margin-bottom: 20px;">
+                Are you sure you want to make this purchase?
+            </div>
+            <div style="text-align: right;">
+                <button onclick="hideConfirmation()"
+                    style="padding: 5px 10px; margin-right: 10px; background-color: #f8f9fa; border: 1px solid #ddd; border-radius: 3px; cursor: pointer;">Batal</button>
+                <button onclick="submitForm()"
+                    style="padding: 5px 10px; background-color: #007bff; color: white; border: 1px solid #007bff; border-radius: 3px; cursor: pointer;">Ya,
+                    Lanjutkan</button>
+            </div>
+        </div>
+    </div>
+
 @endsection
 
 @section('javascript')
@@ -263,71 +266,107 @@
             const warehouseDropdown = document.getElementById('warehouseDropdown');
             const warehouseSelect = document.getElementById('warehouse_id');
 
-            // Show/hide warehouse dropdown based on selected option  
-            multiWarehouseRadio.addEventListener('change', function() {
-                warehouseDropdown.style.display = 'block';
-            });
+            if (multiWarehouseRadio && directlyInStoreRadio && warehouseDropdown) {
+                // Show/hide warehouse dropdown based on selected option  
+                multiWarehouseRadio.addEventListener('change', function() {
+                    warehouseDropdown.style.display = 'block';
+                    if (warehouseSelect) {
+                        warehouseSelect.setAttribute('required', 'required');
+                    }
+                });
 
-            directlyInStoreRadio.addEventListener('change', function() {
-                warehouseDropdown.style.display = 'none';
-            });
+                directlyInStoreRadio.addEventListener('change', function() {
+                    warehouseDropdown.style.display = 'none';
+                    if (warehouseSelect) {
+                        warehouseSelect.removeAttribute('required');
+                    }
+                });
 
-            // Initialize dropdown visibility  
-            warehouseDropdown.style.display = multiWarehouseRadio.checked ? 'block' : 'none';
+                // Initialize dropdown visibility  
+                warehouseDropdown.style.display = multiWarehouseRadio.checked ? 'block' : 'none';
+                if (multiWarehouseRadio.checked && warehouseSelect) {
+                    warehouseSelect.setAttribute('required', 'required');
+                }
+            }
 
             function addProduct() {
                 const productSelect = document.getElementById('product_id');
+                const productId = productSelect.value;
                 const productName = productSelect.options[productSelect.selectedIndex].text;
                 const price = parseFloat(document.getElementById('price').value) || 0;
                 const quantity = parseInt(document.getElementById('quantity').value) || 1;
                 const subtotal = price * quantity;
 
-                if (productSelect.value) {
+                if (productId) {
                     // Validate warehouse selection if multi-warehouse is selected
-                    if (multiWarehouseRadio.checked && !warehouseSelect.value) {
+                    if (multiWarehouseRadio && multiWarehouseRadio.checked && warehouseSelect && !warehouseSelect
+                        .value) {
                         alert('Please select a warehouse first!');
                         return;
                     }
 
-                    const tableBody = document.querySelector('#productTable tbody');
-                    const row = document.createElement('tr');
+                    // Check if product already exists in the table
+                    const existingProductIndex = products.findIndex(p => p.product_id === productId);
 
-                    row.innerHTML = `
-                    <td>${productName}</td>
-                    <td>Rp ${price.toFixed(2)}</td>
-                    <td>${quantity}</td>
-                    <td>Rp ${(subtotal).toFixed(2)}</td>
-                    <td><button type="button" class="btn btn-danger btn-sm remove-product">Remove</button></td>
-                `;
+                    if (existingProductIndex !== -1) {
+                        // Product already exists, update quantity instead of adding a new row
+                        const existingProduct = products[existingProductIndex];
+                        const newQuantity = existingProduct.quantity + quantity;
+                        const newSubtotal = price * newQuantity;
 
-                    tableBody.appendChild(row);
-                    updateTotalPrice();
+                        // Update products array
+                        existingProduct.quantity = newQuantity;
 
-                    // Add the product to the products array
-                    products.push({
-                        product_id: productSelect.value,
-                        quantity: quantity,
-                        price: price
-                    });
+                        // Update table row
+                        const tableBody = document.querySelector('#productTable tbody');
+                        const rows = tableBody.querySelectorAll('tr');
+                        const row = rows[existingProductIndex];
 
-                    // Add event listener for the remove button
-                    row.querySelector('.remove-product').addEventListener('click', function() {
-                        row.remove();
-                        updateTotalPrice();
-                        // Remove the product from the products array
-                        const index = products.findIndex(p => p.product_id === productSelect.value);
-                        if (index > -1) {
-                            products.splice(index, 1);
-                        }
-                        updateProductsInput();
-                    });
+                        // Update quantity and subtotal cells
+                        row.querySelector('td:nth-child(3)').textContent = newQuantity;
+                        row.querySelector('td:nth-child(4)').textContent = `Rp ${newSubtotal.toFixed(2)}`;
+                    } else {
+                        // Add new product
+                        const tableBody = document.querySelector('#productTable tbody');
+                        const row = document.createElement('tr');
+                        row.dataset.productId = productId;
+
+                        row.innerHTML = `
+                <td>${productName}</td>
+                <td>Rp ${price.toFixed(2)}</td>
+                <td>${quantity}</td>
+                <td>Rp ${subtotal.toFixed(2)}</td>
+                <td><button type="button" class="btn btn-danger btn-sm remove-product">Remove</button></td>
+            `;
+
+                        tableBody.appendChild(row);
+
+                        // Add the product to the products array
+                        products.push({
+                            product_id: productId,
+                            quantity: quantity,
+                            price: price
+                        });
+
+                        // Add event listener for the remove button
+                        row.querySelector('.remove-product').addEventListener('click', function() {
+                            const index = Array.from(tableBody.children).indexOf(row);
+                            if (index > -1) {
+                                products.splice(index, 1);
+                            }
+                            row.remove();
+                            updateTotalPrice();
+                            updateProductsInput();
+                        });
+                    }
 
                     // Reset the product selection and quantity
                     productSelect.selectedIndex = 0;
                     document.getElementById('price').value = '';
                     document.getElementById('quantity').value = 1;
 
-                    // Update the products input
+                    // Update the total price and products input
+                    updateTotalPrice();
                     updateProductsInput();
                 }
             }
@@ -391,13 +430,59 @@
             document.getElementById('addProduct').addEventListener('click', addProduct);
 
             // Toggle shipping section visibility
-            document.getElementById('addShippingBtn').addEventListener('click', function() {
-                const shippingSection = document.getElementById('shippingSection');
-                shippingSection.style.display = shippingSection.style.display === 'none' ? 'block' : 'none';
-            });
+            const addShippingBtn = document.getElementById('addShippingBtn');
+            if (addShippingBtn) {
+                addShippingBtn.addEventListener('click', function() {
+                    const shippingSection = document.getElementById('shippingSection');
+                    shippingSection.style.display = shippingSection.style.display === 'none' ? 'block' :
+                        'none';
+                });
+            }
 
             // Update total price when shipping input changes
-            document.getElementById('shipping_cost').addEventListener('input', updateTotalPrice);
+            const shippingCost = document.getElementById('shipping_cost');
+            if (shippingCost) {
+                shippingCost.addEventListener('input', updateTotalPrice);
+            }
         });
+
+        function showConfirmation() {
+            const form = document.getElementById('purchaseForm');
+
+            // Validate form
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            // Validate product table
+            const productTable = document.querySelector('#productTable tbody');
+            if (productTable.children.length === 0) {
+                alert('Please add at least one product to the purchase.');
+                return;
+            }
+
+            // Get selected warehouse option
+            const multiWarehouseRadio = document.getElementById('multiWarehouse');
+            const warehouseSelect = document.getElementById('warehouse_id');
+
+            // Validate warehouse selection if multi-warehouse is selected
+            if (multiWarehouseRadio && multiWarehouseRadio.checked && warehouseSelect && !warehouseSelect.value) {
+                alert('Please select a warehouse first!');
+                return;
+            }
+
+            // Show the confirmation modal with a generic message
+            document.getElementById('customModal').style.display = 'block';
+        }
+
+        function hideConfirmation() {
+            document.getElementById('customModal').style.display = 'none';
+        }
+
+        function submitForm() {
+            hideConfirmation();
+            document.getElementById('purchaseForm').submit();
+        }
     </script>
 @endsection

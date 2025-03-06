@@ -4,221 +4,179 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-
+    <title>Receipt - {{ $sales->no_nota }}</title>
 
     <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            font-size: 12px;
+        }
+        
         #invoice-POS {
-            box-shadow: 0 0 1in -0.25in rgba(0, 0, 0, 0.5);
-            padding: 2mm;
+            width: 100%;
             margin: 0 auto;
+            padding: 5px;
             background: #FFF;
+        }
 
+        h1, h2, h3, h4 {
+            margin: 2px 0;
+        }
 
-            ::selection {
-                background: #f31544;
-                color: #FFF;
-            }
+        h1 {
+            font-size: 16px;
+        }
 
-            ::moz-selection {
-                background: #f31544;
-                color: #333;
-            }
+        h2 {
+            font-size: 14px;
+        }
 
-            h1 {
-                font-size: 1.5em;
-                color: #222;
-            }
+        p {
+            margin: 2px 0;
+            font-size: 12px;
+        }
 
-            h2 {
-                font-size: .9em;
-            }
+        .border-bottom {
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+            margin-bottom: 5px;
+        }
 
-            h3 {
-                font-size: 1.2em;
-                font-weight: 300;
-                line-height: 2em;
-            }
+        .text-center {
+            text-align: center;
+        }
 
-            p {
-                font-size: .7em;
-                color: #333;
-                line-height: 1.2em;
-            }
+        .company-name {
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+        }
 
-            #top,
-            #mid,
-            #bot {
-                /* Targets all id with 'col-' */
-                border-bottom: 1px solid #333;
-            }
+        .company-info {
+            text-align: center;
+            font-size: 11px;
+        }
 
-            #top {
-                min-height: 100px;
-            }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 5px 0;
+        }
 
-            #mid {
-                min-height: 80px;
-            }
+        .table-header {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
 
-            #bot {
-                min-height: 50px;
-            }
+        .item-row td {
+            border-bottom: 1px dotted #ddd;
+            padding: 2px 0;
+        }
 
-            #top .logo {
-                //float: left;
-                height: 60px;
-                width: 60px;
-                background: url(http://michaeltruong.ca/images/logo1.png) no-repeat;
-                background-size: 60px 60px;
-            }
+        .total-row {
+            font-weight: bold;
+        }
 
-            .clientlogo {
-                float: left;
-                height: 60px;
-                width: 60px;
-                background: url(http://michaeltruong.ca/images/client.jpg) no-repeat;
-                background-size: 60px 60px;
-                border-radius: 50px;
-            }
+        .receipt-header {
+            font-weight: bold;
+            font-size: 14px;
+            text-align: center;
+            margin: 10px 0;
+        }
 
-            .info {
-                display: block;
-                //float:left;
-                margin-left: 0;
-            }
+        .invoice-info {
+            text-align: right;
+            font-size: 11px;
+        }
 
-            .title {
-                float: right;
-            }
+        .customer-info {
+            margin: 5px 0;
+        }
 
-            .title p {
-                text-align: right;
-            }
-
-            table {
-                width: 100%;
-                border-collapse: collapse;
-            }
-
-            td {
-                //padding: 5px 0 5px 15px;
-                //border: 1px solid #EEE
-            }
-
-            .tabletitle {
-                //padding: 5px;
-                font-size: .5em;
-                background: #EEE;
-            }
-
-            .service {
-                border-bottom: 1px solid #EEE;
-            }
-
-            .item {
-                width: 24mm;
-            }
-
-            .itemtext {
-                font-size: .5em;
-            }
-
-            #legalcopy {
-                margin-top: 5mm;
-            }
-
-
-
+        .legal-copy {
+            border-top: 1px solid #333;
+            margin-top: 10px;
+            padding-top: 5px;
+            font-size: 10px;
+            text-align: center;
         }
     </style>
-
 </head>
 
 <body>
-
-
     <div id="invoice-POS">
-
-        <center id="top">
-            <div class="logo"></div>
-            <div class="info">
-                <h2 style="color: #333">BUKTI PEMBAYARAN SAH</h2>
-            </div><!--End Info-->
-        </center><!--End InvoiceTop-->
-
-        <div id="mid">
-            <div class="info">
-                <h2 style="color: #333">Informasi Pembeli</h2>
-                <p>
-                    Email : {{ $sales->customer->email }}</br>
-                    Nama Customer : {{ $sales->customer->name }}</br>
-                    Nomer Hp : {{ $sales->customer->phone_number }}</br>
-                </p>
+        <!-- Company Header Section -->
+        <div class="border-bottom">
+            <div class="company-name">{{ $company->name }}</div>
+            <div class="company-info">
+                {{ $company->address }}<br>
+                Tel: {{ $company->phone_number }} | Email: {{ $company->email }}
             </div>
-        </div><!--End Invoice Mid-->
-
-        <div id="bot">
-
-            <div id="table">
-                <table>
-                    <tr class="tabletitle">
-                        <td class="item">
-                            <h2>Item</h2>
-                        </td>
-                        <td class="Hours">
-                            <h2>Qty</h2>
-                        </td>
-                        <td class="Rate">
-                            <h2>Sub Total</h2>
-                        </td>
-                    </tr>
-
-                    @foreach ($sales->salesDetail as $item)
-                        <tr class="service">
-                            <td class="tableitem">
-                                <p class="itemtext">{{ $item->product->name }}</p>
-                            </td>
-                            <td class="tableitem">
-                                <p class="itemtext">{{ $item->total_quantity }}</p>
-                            </td>
-                            <td class="tableitem">
-                                <p class="itemtext">Rp.{{ number_format($item->total_price) }}</p>
-                            </td>
-                        </tr>
-                    @endforeach
-                    <tr class="total">
-                        <td class="tableitem" colspan="2">
-                            <p>Total</p>
-                        </td>
-                        <td class="tableitem">
-                            <p class="itemtext">Rp.{{ number_format($sales->total_price) }}</p>
-                        </td>
-                    </tr>
-
-                    <tr class="total">
-                        <td class="tableitem" colspan="2">
-                            <p>Discount</p>
-                        </td>
-                        <td class="tableitem">
-                            <p class="itemtext">
-                                Rp.{{ number_format($sales->discount) }}
-                                ({{ number_format(($sales->discount / ($sales->discount + $sales->total_price)) * 100, 2) }}%)
-                            </p>
-                        </td>
-                    </tr>
-                </table>
-
-            </div><!--End Table-->
-            <div id="legalcopy">
-                <p class="legal"><strong>Terimakasih atas pembelian anda!</strong>  Bukti pembayaran yang sah ini
-                    berlaku hingga 7 hari!
-                </p>
+            
+            <div class="receipt-header">BUKTI PEMBAYARAN SAH</div>
+            
+            <div class="invoice-info">
+                No. Invoice: {{ $sales->no_nota }}<br>
+                Tanggal: {{ date('d/m/Y', strtotime($sales->sales_date)) }}
             </div>
+        </div>
 
-        </div><!--End InvoiceBot-->
-    </div><!--End Invoice-->
+        <!-- Customer Information Section -->
+        <div class="border-bottom customer-info">
+            <h2>Informasi Pembeli</h2>
+            <p>
+                Nama Customer: {{ $sales->customer->name }}<br>
+                Email: {{ $sales->customer->email }}<br>
+                Nomer Hp: {{ $sales->customer->phone_number }}
+            </p>
+        </div>
 
+        <!-- Items Section -->
+        <div>
+            <table>
+                <tr class="table-header">
+                    <td width="60%">Item</td>
+                    <td width="15%">Qty</td>
+                    <td width="25%">Sub Total</td>
+                </tr>
+
+                @foreach ($sales->salesDetail as $item)
+                    <tr class="item-row">
+                        <td>{{ $item->product->name }}</td>
+                        <td>{{ $item->total_quantity }}</td>
+                        <td>Rp.{{ number_format($item->total_price) }}</td>
+                    </tr>
+                @endforeach
+            </table>
+
+            <table>
+                <tr class="total-row">
+                    <td width="75%">Total</td>
+                    <td width="25%">Rp.{{ number_format($sales->total_price) }}</td>
+                </tr>
+
+                <tr>
+                    <td>Discount</td>
+                    <td>
+                        Rp.{{ number_format($sales->discount) }}
+                        ({{ number_format(($sales->discount / ($sales->discount + $sales->total_price)) * 100, 2) }}%)
+                    </td>
+                </tr>
+                
+                <tr class="total-row">
+                    <td>Grand Total</td>
+                    <td>Rp.{{ number_format($sales->total_price - $sales->discount) }}</td>
+                </tr>
+            </table>
+
+            <div class="legal-copy">
+                <strong>Terimakasih atas pembelian anda!</strong><br>
+                Bukti pembayaran yang sah ini berlaku hingga 7 hari!
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>
