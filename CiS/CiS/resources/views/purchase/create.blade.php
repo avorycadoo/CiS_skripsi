@@ -114,7 +114,8 @@
                         <div class="col-md-2">
                             <label for="quantity">Quantity</label>
                             <input type="number" class="form-control" name="quantity" id="quantity" value="1"
-                                min="1">
+                                min="1" onchange="if(parseInt(this.value) <= 0) this.value=1;"
+                                oninput="this.value = Math.max(1, Math.abs(parseInt(this.value)) || 1)">
                         </div>
                         <div class="col-md-2 align-self-end">
                             <button type="button" class="btn btn-primary w-100" id="addProduct">Add</button>
@@ -253,9 +254,15 @@
 
         function getPrice(selectElement) {
             const priceInput = document.getElementById('price');
+            const quantityInput = document.getElementById('quantity');
             const selectedOption = selectElement.options[selectElement.selectedIndex];
             const price = selectedOption.getAttribute('data-price') || 0;
             priceInput.value = price;
+
+            // Ensure quantity is always at least 1
+            if (parseInt(quantityInput.value) <= 0) {
+                quantityInput.value = 1;
+            }
         }
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -295,6 +302,14 @@
                 const productName = productSelect.options[productSelect.selectedIndex].text;
                 const price = parseFloat(document.getElementById('price').value) || 0;
                 const quantity = parseInt(document.getElementById('quantity').value) || 1;
+
+                // Validate quantity is positive
+                if (quantity <= 0) {
+                    alert("Quantity must be greater than zero");
+                    document.getElementById('quantity').value = 1;
+                    return;
+                }
+
                 const subtotal = price * quantity;
 
                 if (productId) {
@@ -462,6 +477,20 @@
                 return;
             }
 
+            // Check for invalid quantities
+            const rows = productTable.querySelectorAll('tr');
+            let hasInvalidQuantity = false;
+            rows.forEach(row => {
+                const quantity = parseInt(row.children[2].textContent);
+                if (quantity <= 0) {
+                    hasInvalidQuantity = true;
+                }
+            });
+
+            if (hasInvalidQuantity) {
+                alert("All products must have a positive quantity");
+                return;
+            }
             // Get selected warehouse option
             const multiWarehouseRadio = document.getElementById('multiWarehouse');
             const warehouseSelect = document.getElementById('warehouse_id');

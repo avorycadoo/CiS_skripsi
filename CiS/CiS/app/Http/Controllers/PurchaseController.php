@@ -22,7 +22,8 @@ class PurchaseController extends Controller
         // Get all unique invoice numbers
         $invoices = Purchase::select('noNota')->distinct()->get();
         
-        $query = Purchase::with(['supplier', 'paymentMethod', 'warehouse', 'purchaseDetails.product']);
+        $query = Purchase::with(['supplier', 'paymentMethod', 'warehouse', 'purchaseDetails.product'])
+        ->whereNotNull('receive_date'); 
         
         // Apply date range filter
         if ($request->filled('start_date')) {
@@ -524,7 +525,7 @@ class PurchaseController extends Controller
             if ($request->input('warehouse_option') === 'multi') {
                 $warehouseId = $request->input('warehouse_id');
             }
-            dd($request->input('cogs_method'));
+            // dd($request->input('cogs_method'));
 
             // Insert purchase
             $purchaseId = DB::table('purchase')->insertGetId([

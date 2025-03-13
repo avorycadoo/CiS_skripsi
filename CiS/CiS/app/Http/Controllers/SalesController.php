@@ -642,6 +642,38 @@ class SalesController extends Controller
     public function store(Request $request)
     {
         try {
+            // Validate products before starting transaction
+            $products = json_decode($request->input('products'), true);
+            
+            if (empty($products)) {
+                return redirect()->back()->with('error', 'No products provided for the sale')->withInput();
+            }
+            
+            // Check stock availability and validate quantities
+            foreach ($products as $product) {
+                // Ensure quantity is positive
+                if (!isset($product['quantity']) || $product['quantity'] <= 0) {
+                    return redirect()->back()
+                        ->with('error', 'All product quantities must be positive')
+                        ->withInput();
+                }
+                
+                // Check available stock
+                $productItem = Product::find($product['product_id']);
+                if (!$productItem) {
+                    return redirect()->back()
+                        ->with('error', 'Product not found')
+                        ->withInput();
+                }
+                
+                // If requested quantity exceeds available stock
+                if ($product['quantity'] > $productItem->stock) {
+                    return redirect()->back()
+                        ->with('error', "Insufficient stock for {$productItem->name}. Available: {$productItem->stock}")
+                        ->withInput();
+                }
+            }
+
             // Start database transaction
             DB::beginTransaction();
 
@@ -687,6 +719,8 @@ class SalesController extends Controller
                 // Insert sales details and collect product data for inventory update
                 $productsForInventory = [];
                 foreach ($products as $product) {
+                    $quantity = max(1, intval($product['quantity']));
+
                     // Insert into sales_detail
                     DB::table('sales_detail')->insert([
                         'product_id' => $product['product_id'],

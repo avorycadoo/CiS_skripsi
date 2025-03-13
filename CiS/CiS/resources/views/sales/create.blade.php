@@ -49,7 +49,8 @@
                             <select class="form-control" name="product_id" id="product_id" onchange="getPrice(this)">
                                 <option value="">Select a product</option>
                                 @foreach ($products as $product)
-                                    <option value="{{ $product->id }}" data-price="{{ $product->price }}">
+                                    <option value="{{ $product->id }}" data-price="{{ $product->price }}"
+                                        data-stock="{{ $product->stock }}">
                                         {{ $product->name }}
                                     </option>
                                 @endforeach
@@ -62,7 +63,8 @@
                         <div class="col-md-2">
                             <label for="quantity">Quantity</label>
                             <input type="number" class="form-control" name="quantity" id="quantity" value="1"
-                                min="1">
+                                min="1" onchange="if(parseInt(this.value) <= 0) this.value=1;"
+                                oninput="this.value = Math.max(1, Math.abs(parseInt(this.value)) || 1)">
                         </div>
                         <div class="col-md-2 align-self-end">
                             <button type="button" class="btn btn-primary w-100" id="addProduct">Add</button>
@@ -224,11 +226,29 @@
     <script>
         let totalPrice = 0; // Initialize total price
 
+
+
         function getPrice(selectElement) {
             const priceInput = document.getElementById('price');
             const selectedOption = selectElement.options[selectElement.selectedIndex];
             const price = selectedOption.getAttribute('data-price') || 0;
             priceInput.value = price;
+            const stock = parseInt(selectedOption.getAttribute('data-stock') || 0);
+            // Update price field
+            priceInput.value = price;
+
+            // Set the max quantity to stock
+            quantityInput.max = stock;
+
+            // Set min to 1 to prevent negative and zero values
+            quantityInput.min = 1;
+
+            // If current quantity exceeds stock or is less than 1, adjust it
+            if (parseInt(quantityInput.value) > stock) {
+                quantityInput.value = stock;
+            } else if (parseInt(quantityInput.value) <= 0) {
+                quantityInput.value = 1;
+            }
         }
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -240,54 +260,79 @@
 
             function addProduct() {
                 const productSelect = document.getElementById('product_id');
-                const productName = productSelect.options[productSelect.selectedIndex].text;
+
+                // Check if a product is selected
+                if (!productSelect.value) {
+                    alert("Please select a product");
+                    return;
+                }
+
+                // Define variables explicitly with proper scope
+                const selectedOption = productSelect.options[productSelect.selectedIndex];
+                const productName = selectedOption.text;
                 const price = parseFloat(document.getElementById('price').value) || 0;
                 const quantity = parseInt(document.getElementById('quantity').value) || 1;
+                const stock = parseInt(selectedOption.getAttribute('data-stock') || 0);
+
+                // Validate against available stock
+                if (quantity > stock) {
+                    alert(`Cannot add more than available stock (${stock})`);
+                    document.getElementById('quantity').value = stock;
+                    return;
+                }
+
+                // Validate against zero or negative quantities
+                if (quantity <= 0) {
+                    alert("Quantity must be greater than zero");
+                    document.getElementById('quantity').value = 1;
+                    return;
+                }
+
+                // Calculate amount
                 const amount = price * quantity;
 
-                if (productSelect.value) {
-                    const tableBody = document.querySelector('#productTable tbody');
-                    const row = document.createElement('tr');
+                // Add to table
+                const tableBody = document.querySelector('#productTable tbody');
+                const row = document.createElement('tr');
 
-                    row.innerHTML = `
-                <td>${productName}</td>
-                <td>Rp ${price.toFixed(2)}</td>
-                <td>${quantity}</td>
-                <td>Rp ${(amount).toFixed(2)}</td>
-                <td><button type="button" class="btn btn-danger btn-sm remove-product">Remove</button></td>
-            `;
+                row.innerHTML = `
+        <td>${productName}</td>
+        <td>Rp ${price.toFixed(2)}</td>
+        <td>${quantity}</td>
+        <td>Rp ${(amount).toFixed(2)}</td>
+        <td><button type="button" class="btn btn-danger btn-sm remove-product">Remove</button></td>
+    `;
 
-                    tableBody.appendChild(row);
+                tableBody.appendChild(row);
 
-                    // Add the product to the products array
-                    products.push({
-                        product_id: productSelect.value,
-                        quantity: quantity,
-                        price: price
-                    });
+                // Add the product to the products array
+                products.push({
+                    product_id: productSelect.value,
+                    quantity: quantity,
+                    price: price
+                });
 
-                    // Add event listener for the remove button
-                    const removeBtn = row.querySelector('.remove-product');
-                    removeBtn.addEventListener('click', function() {
-                        row.remove();
-                        // Remove the product from the products array based on row index
-                        const index = Array.from(tableBody.children).indexOf(row);
-                        if (index > -1) {
-                            products.splice(index, 1);
-                        }
-                        updateProductsInput();
-                        updateTotalPrice();
-                    });
-
-                    // Reset the product selection and quantity
-                    productSelect.selectedIndex = 0;
-                    document.getElementById('price').value = '';
-                    document.getElementById('quantity').value = 1;
-
-                    // Update the products input
+                // Add event listener for the remove button
+                const removeBtn = row.querySelector('.remove-product');
+                removeBtn.addEventListener('click', function() {
+                    row.remove();
+                    // Remove the product from the products array based on row index
+                    const index = Array.from(tableBody.children).indexOf(row);
+                    if (index > -1) {
+                        products.splice(index, 1);
+                    }
                     updateProductsInput();
                     updateTotalPrice();
-                }
+                });
+
+                // Reset the product selection and quantity
+                productSelect.selectedIndex = 0;
+                document.getElementById('price').value = '';
+                document.getElementById('quantity').value = 1;
+
+                // Update the products input
+                updateProductsInput();
+                updateTotalPrice();
             }
 
             function updateProductsInput() {
