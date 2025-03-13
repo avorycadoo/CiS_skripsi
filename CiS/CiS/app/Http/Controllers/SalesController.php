@@ -26,7 +26,8 @@ class SalesController extends Controller
         // Get all unique invoice numbers
         $invoices = Sales::select('noNota')->distinct()->get();
     
-        $query = Sales::with(['customer', 'paymentMethod', 'salesDetail.product']);
+        $query = Sales::with(['customer', 'paymentMethod', 'salesDetail.product'])
+        ->whereNotNull('shipped_date'); 
     
         // Apply date range filter
         if ($request->filled('start_date')) {

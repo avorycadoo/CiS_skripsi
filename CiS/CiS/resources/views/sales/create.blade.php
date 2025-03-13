@@ -107,6 +107,16 @@
                                             <label class="form-check-label" for="discount{{ $discount->id }}">
                                                 {{ $discount->name }}
                                             </label>
+
+                                            <!-- Add description text based on discount type -->
+                                            @if (str_contains($discount->name, 'Discount per product'))
+                                                <small class="d-block ms-4 text-muted">Minimum 1 product</small>
+                                            @elseif (str_contains($discount->name, 'Minimum purchase discount'))
+                                                <small class="d-block ms-4 text-muted">Minimum Rp.2.000.000</small>
+                                            @elseif (str_contains($discount->name, 'Discount on the number of product purchases'))
+                                                <small class="d-block ms-4 text-muted">Minimum 20 products</small>
+                                            @endif
+
                                             <div class="ms-4 mt-2 discount-value-input" style="display: none;">
                                                 <div class="input-group" style="max-width: 200px;">
                                                     <input type="number" class="form-control"

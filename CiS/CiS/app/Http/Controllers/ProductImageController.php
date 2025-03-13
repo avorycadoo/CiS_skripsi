@@ -40,40 +40,6 @@ class ProductImageController extends Controller
         $product->save();
         return redirect()->route('product.index')->with('status', 'Image uploaded');
     }
-    // public function simpanPhoto(Request $request)
-    // {
-    //     // Validate the file
-    //     $request->validate([
-    //         'file_photo' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
-    //     ]);
-
-    //     // Get the uploaded file
-    //     $file = $request->file("file_photo");
-
-    //     // Define the folder where the image will be stored
-    //     $folder = 'images';
-
-    //     // Generate a filename
-    //     $filename = time() . "_" . $file->getClientOriginalName();
-
-    //     // Move the uploaded file to the designated folder
-    //     $file->move(public_path($folder), $filename);
-
-    //     // Create a new image record
-    //     $productImage = new Product_Image();
-    //     $productImage->name = $filename;
-    //     $productImage->save(); // Save the image first to get the ID
-
-    //     // Now associate the image with the product
-    //     $product = Product::find($request->product_id); // Ensure you are using the correct product ID
-    //     if ($product) {
-    //         $product->product_image_id = $productImage->id; // Set the product_image_id
-    //         $product->save(); // Save the product to update the product_image_id
-    //     }
-
-    //     // Redirect with success message
-    //     return redirect()->route('product.index')->with('status', 'Image uploaded successfully');
-    // }
 
     public function simpanPhoto(Request $request)
     {

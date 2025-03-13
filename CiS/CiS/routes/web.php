@@ -65,7 +65,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/inventoryKonfigurasi', [WarehouseController::class, 'dataKonfigurasi'])->name('warehouse.konfigurasi');  
     Route::post('/inventory/updateConfiguration', [WarehouseController::class, 'updateConfiguration'])->name('warehouse.updateConfiguration');
 
-    Route::get('/profitLoss', [ProductController::class, 'profitLoss']);
+    Route::get('/profitLoss', [ProductController::class, 'salesProfitLoss'])->name('sales.profit-loss');
     Route::get('/get-product-max-return', [SalesReturController::class, 'getProductMaxReturn']);
     Route::get('/get-total-quantity', [SalesReturController::class, 'getTotalQuantity']);
     Route::get('/retur/{id}/detailSales', [SalesReturController::class, 'detail'])->name('salesRetur.detail');

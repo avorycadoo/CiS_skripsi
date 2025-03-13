@@ -1,7 +1,7 @@
 @extends('layouts.conquer')
 
 @section('content')
-    <form method="POST" action="{{ route('product.store') }}" id="productForm">
+    <form method="POST" action="{{ route('product.store') }}" id="productForm" enctype="multipart/form-data">
         @csrf
 
         <fieldset class="border p-3 mb-4">
@@ -52,6 +52,12 @@
             <legend class="w-auto">Additional Information</legend>
 
             <div class="form-group">
+                <label for="file_photo">Upload Product Image</label>
+                <input type="file" class="form-control-file" name="file_photo" id="file_photo">
+                <small class="form-text text-muted">Upload an image for this product (JPEG, PNG, JPG, GIF up to 2MB)</small>
+            </div>
+
+            {{-- <div class="form-group">
                 <label for="product_image_id">Select Image</label>
                 <select class="form-control" name="product_image_id">
                     <option value="" selected>Select Your Image</option>
@@ -62,7 +68,9 @@
                 </select>
                 <small class="form-text text-muted">If there is no suitable product photo then select "None" or leave
                     blank!</small>
-            </div>
+            </div> --}}
+
+
 
             <div class="form-group">
                 <label for="product_category_id">Select Category</label>
@@ -80,6 +88,19 @@
                     <option value="" disabled selected>Select Your Supplier</option>
                     @foreach ($suppliers as $supplier)
                         <option value="{{ $supplier->id }}">{{ $supplier->company_name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <!-- COGS Method Section -->
+            <div class="form-group">
+                <label for="cogs_method">Select Cogs Method:</label>
+                <select class="form-control" name="cogs_method" required>
+                    <option value="">Select COGS Method</option>
+                    @foreach ($activeCogs as $cogs_method)
+                        <option value="{{ strtolower(str_replace('P-', '', $cogs_method->name)) }}">
+                            {{ $cogs_method->name }}
+                        </option>
                     @endforeach
                 </select>
             </div>

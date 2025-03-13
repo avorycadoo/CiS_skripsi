@@ -524,7 +524,8 @@ class PurchaseController extends Controller
             if ($request->input('warehouse_option') === 'multi') {
                 $warehouseId = $request->input('warehouse_id');
             }
-    
+            dd($request->input('cogs_method'));
+
             // Insert purchase
             $purchaseId = DB::table('purchase')->insertGetId([
                 'noNota' => $noNota,
@@ -587,7 +588,6 @@ class PurchaseController extends Controller
                     }
                 }
             }
-    
             if (!$isSupplierShipping) {
                 // Update inventory with the selected COGS method
                 $purchase = Purchase::find($purchaseId);
