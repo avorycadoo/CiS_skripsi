@@ -9,4 +9,11 @@ class detailKonfigurasi extends Model
 {
     use HasFactory;
     protected $table = 'detailkonfigurasi';
+    public $timestamps = false;
+
+    public function konfigurasi()
+    {
+        return $this->belongsTo(Konfigurasi::class, 'konfigurasi_id');
+    }
+
 }

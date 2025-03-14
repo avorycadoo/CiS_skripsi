@@ -514,7 +514,7 @@ class SalesController extends Controller
         // Update discounts
         if ($request->has('discounts')) {
             $allDiscounts = DB::table('detailkonfigurasi')->where('konfigurasi_id', 1)->get();
-
+    
             // If discounts are selected, update their status
             foreach ($allDiscounts as $discount) {
                 if ($request->has('discounts') && in_array($discount->id, $request->input('discounts', []))) {
@@ -533,11 +533,11 @@ class SalesController extends Controller
                 ->where('types', '!=', 'mandatory') // Hanya reset yang bukan mandatory
                 ->update(['statusActive' => 0]);
         }
-
+    
         // Update shippings 
         if ($request->has('shippings')) {
             $allShippings = DB::table('detailkonfigurasi')->where('konfigurasi_id', 2)->get();
-
+    
             foreach ($allShippings as $shipping) {
                 if ($shipping->types === 'mandatory') {
                     DB::table('detailkonfigurasi')
@@ -559,12 +559,12 @@ class SalesController extends Controller
                 ->where('types', '!=', 'mandatory') // Hanya reset yang bukan mandatory
                 ->update(['statusActive' => 0]);
         }
-
-
+    
+    
         // Update payments
         if ($request->has('payments')) {
             $allPayments = DB::table('detailkonfigurasi')->where('konfigurasi_id', 3)->get();
-
+    
             foreach ($allPayments as $payment) {
                 if ($payment->types === 'mandatory') {
                     DB::table('detailkonfigurasi')
@@ -586,12 +586,12 @@ class SalesController extends Controller
                 ->where('types', '!=', 'mandatory') // Hanya reset yang bukan mandatory
                 ->update(['statusActive' => 0]);
         }
-
+    
         // Update cogs 
         if ($request->has('cogs')) {
             $checkedCogs = $request->input('cogs', []); // Ambil cogs yang dipilih
             $allCogs = DB::table('detailkonfigurasi')->where('konfigurasi_id', 8)->get();
-
+    
             foreach ($allCogs as $cogs_method) {
                 if ($cogs_method->types === 'mandatory') {
                     // Jika mandatory, tetap aktif
@@ -616,7 +616,7 @@ class SalesController extends Controller
                 ->where('types', '!=', 'mandatory') // Hanya reset yang bukan mandatory
                 ->update(['statusActive' => 0]);
         }
-
+    
         // Update discount values
         if ($request->has('discount_values')) {
             foreach ($request->input('discount_values') as $id => $value) {
@@ -625,7 +625,16 @@ class SalesController extends Controller
                     ->update(['value' => $value]);
             }
         }
-
+    
+        // Update discount minimum values
+        if ($request->has('discount_min_values')) {
+            foreach ($request->input('discount_min_values') as $id => $min_value) {
+                DB::table('detailkonfigurasi')
+                    ->where('id', $id)
+                    ->update(['min_value' => $min_value]);
+            }
+        }
+    
         // Update shipping values
         if ($request->has('shipping_values')) {
             foreach ($request->input('shipping_values') as $id => $value) {
@@ -634,7 +643,7 @@ class SalesController extends Controller
                     ->update(['value' => $value]);
             }
         }
-
+    
         return redirect()->route("sales.konfigurasi")->with('status', "Horray, Your konfigurasi data has been updated");
     }
 

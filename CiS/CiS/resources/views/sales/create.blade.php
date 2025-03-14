@@ -105,18 +105,21 @@
                                         <div class="form-check mb-3">
                                             <input class="form-check-input discount-radio" type="radio" name="discount_id"
                                                 value="{{ $discount->value }}" id="discount{{ $discount->id }}"
-                                                data-name="{{ $discount->name }}">
+                                                data-name="{{ $discount->name }}"
+                                                data-min-value="{{ $discount->min_value ?? 0 }}">
                                             <label class="form-check-label" for="discount{{ $discount->id }}">
                                                 {{ $discount->name }}
                                             </label>
 
                                             <!-- Add description text based on discount type -->
-                                            @if (str_contains($discount->name, 'Discount per product'))
+                                            @if (str_contains($discount->name, 'Discount product'))
                                                 <small class="d-block ms-4 text-muted">Minimum 1 product</small>
                                             @elseif (str_contains($discount->name, 'Minimum purchase discount'))
-                                                <small class="d-block ms-4 text-muted">Minimum Rp.2.000.000</small>
+                                                <small class="d-block ms-4 text-muted">Minimum
+                                                    Rp.{{ number_format($discount->min_value ?? 2000000) }}</small>
                                             @elseif (str_contains($discount->name, 'Discount on the number of product purchases'))
-                                                <small class="d-block ms-4 text-muted">Minimum 20 products</small>
+                                                <small class="d-block ms-4 text-muted">Minimum
+                                                    {{ $discount->min_value ?? 20 }} products</small>
                                             @endif
 
                                             <div class="ms-4 mt-2 discount-value-input" style="display: none;">
@@ -400,6 +403,8 @@
                 });
             });
 
+            // Add this to your blade template where you handle discount logic
+
             function updateTotalPrice() {
                 const rows = document.querySelectorAll('#productTable tbody tr');
                 let totalPrice = 0;
@@ -428,11 +433,17 @@
                 // Only process discounts if there are any discount radios available
                 const discountRadios = document.querySelectorAll('.discount-radio');
                 if (discountRadios.length > 0) {
-                    let perProductDiscount = document.querySelector('input[data-name="Discount per product"]');
+                    let perProductDiscount = document.querySelector('input[data-name="Discount product"]');
                     let minimumPurchaseRadio = document.querySelector(
                         'input[data-name="Minimum purchase discount"]');
                     let volumeDiscountRadio = document.querySelector(
                         'input[data-name="Discount on the number of product purchases"]');
+
+                    // Get minimum values from data attributes (set these in the blade template)
+                    const minPurchaseAmount = parseFloat(minimumPurchaseRadio ? minimumPurchaseRadio.getAttribute(
+                        'data-min-value') : 2000000);
+                    const minProductQuantity = parseInt(volumeDiscountRadio ? volumeDiscountRadio.getAttribute(
+                        'data-min-value') : 20);
 
                     // Reset all radios
                     discountRadios.forEach(radio => {
@@ -445,14 +456,14 @@
                     });
 
                     // Check conditions and apply highest applicable discount
-                    if (totalQuantity >= 20 && volumeDiscountRadio) {
+                    if (totalQuantity >= minProductQuantity && volumeDiscountRadio) {
                         volumeDiscountRadio.checked = true;
                         const valueInput = volumeDiscountRadio.closest('.form-check').querySelector(
                             '.discount-value-input');
                         if (valueInput) {
                             valueInput.style.display = 'block';
                         }
-                    } else if (totalPrice >= 2000000 && minimumPurchaseRadio) {
+                    } else if (totalPrice >= minPurchaseAmount && minimumPurchaseRadio) {
                         minimumPurchaseRadio.checked = true;
                         const valueInput = minimumPurchaseRadio.closest('.form-check').querySelector(
                             '.discount-value-input');
