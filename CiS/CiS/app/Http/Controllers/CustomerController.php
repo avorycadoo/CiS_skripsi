@@ -104,6 +104,7 @@ class CustomerController extends Controller
         $updatedData->address = $request->address;
         $updatedData->phone_number = $request->phone_number;
         $updatedData->email = $request->email;
+        $updatedData->status_active = $request->status_active;
 
 
         $updatedData->save();

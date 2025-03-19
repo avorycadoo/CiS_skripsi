@@ -13,8 +13,8 @@ class EmployeeController extends Controller
      */
     public function index()
     {
-        $querybuilder = Employe::all(); // ini untuk pake model
-        return view('employee.index', ['data' => $querybuilder]);
+        $data = Employe::with('user')->get();
+        return view('employee.index', ['data' => $data]);
     }
 
     /**
@@ -22,10 +22,9 @@ class EmployeeController extends Controller
      */
     public function create()
     {
-        // Fetch all users
-        $users = User::all();
-        
-        return view('employee.create', compact('users'));
+        // Get users who don't have an employee record yet
+        $users = User::whereDoesntHave('employees')->get();
+        return view('employee.create', ['users' => $users]);
     }
     /**
      * Store a newly created resource in storage.
@@ -66,15 +65,30 @@ class EmployeeController extends Controller
      */
     public function update(Request $request, Employe $employe)
     {
-        $updatedData = $employe;
-        $updatedData->name = $request->name;
-        $updatedData->phone_number = $request->phone_number;
-        $updatedData->address = $request->address;
-
-        $updatedData->save();
-        
-
-        return redirect()->route("employe.index")->with('status', "Horray, Your employee data is already updated");
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'phone_number' => 'required|string|max:20',
+            'address' => 'required|string',
+            'status_active' => 'required|boolean',
+        ]);
+       
+        // Update employee data
+        $employe->name = $request->name;
+        $employe->phone_number = $request->phone_number;
+        $employe->address = $request->address;
+        $employe->status_active = $request->status_active;
+        $employe->save();
+       
+        // Update associated user's status_active
+        if ($employe->users_id) {
+            $user = User::find($employe->users_id);
+            if ($user) {
+                $user->status_active = $request->status_active;
+                $user->save();
+            }
+        }
+       
+        return redirect()->route("employe.index")->with('status', "Employee data has been successfully updated.");
     }
 
     /**

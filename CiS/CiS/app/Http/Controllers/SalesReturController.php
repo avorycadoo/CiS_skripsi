@@ -14,16 +14,51 @@ class SalesReturController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        // Fetch all return records with their associated customers and products
-        $returs = Retur::with(['customer', 'product'])
-            ->where('type', 'penjualan') // Filter by type
-            ->get();
-
-        return view('salesRetur.index', compact('returs'));
+        $search = $request->input('search');
+        $status = $request->input('status');
+        $date_from = $request->input('date_from');
+        $date_to = $request->input('date_to');
+        
+        // Start the query
+        $query = Retur::with(['customer', 'product'])
+            ->where('type', 'penjualan');
+        
+        // Apply search filter (for invoice number or customer name)
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('invoice_number', 'like', '%' . $search . '%')
+                  ->orWhereHas('customer', function($query) use ($search) {
+                      $query->where('name', 'like', '%' . $search . '%');
+                  });
+            });
+        }
+        
+        // Apply status filter
+        if ($status) {
+            $query->where('status', $status);
+        }
+        
+        // Apply date range filters
+        if ($date_from) {
+            $query->whereDate('created_at', '>=', $date_from);
+        }
+        
+        if ($date_to) {
+            $query->whereDate('created_at', '<=', $date_to);
+        }
+        
+        // Execute query
+        $returs = $query->get();
+        
+        // Get unique statuses for the filter dropdown
+        $statuses = Retur::where('type', 'penjualan')
+            ->distinct()
+            ->pluck('status');
+        
+        return view('salesRetur.index', compact('returs', 'statuses', 'search', 'status', 'date_from', 'date_to'));
     }
-
     public function detail($id)
     {
         // Fetch the sale with its details

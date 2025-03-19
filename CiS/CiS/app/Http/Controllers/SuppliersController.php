@@ -10,12 +10,23 @@ class SuppliersController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $querybuilder = Suppliers::all(); // ini untuk pake model
-        return view('suppliers.index', ['data' => $querybuilder]);
-    }
+        $search = $request->input('search');
 
+        // Query with search filter if provided
+        if ($search) {
+            $querybuilder = Suppliers::where('company_name', 'LIKE', '%' . $search . '%')
+                                    ->orWhere('phone_number', 'LIKE', '%' . $search . '%')
+                                    ->orWhere('email', 'LIKE', '%' . $search . '%')
+                                    ->orWhere('address', 'LIKE', '%' . $search . '%')
+                                    ->get();
+        } else {
+            $querybuilder = Suppliers::all();
+        }
+        
+        return view('suppliers.index', ['data' => $querybuilder, 'search' => $search]);
+    }
     /**
      * Show the form for creating a new resource.
      */

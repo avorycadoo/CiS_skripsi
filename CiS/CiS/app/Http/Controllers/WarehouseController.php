@@ -11,10 +11,19 @@ class WarehouseController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $querybuilder = Warehouse::all(); // ini untuk pake model
-        return view('warehouse.index', ['data' => $querybuilder]);
+        $search = $request->input('search');
+
+        if ($search) {
+            $querybuilder = Warehouse::where('name', 'LIKE', '%' . $search . '%')
+                                    ->orWhere('address', 'LIKE', '%' . $search . '%')
+                                    ->get();
+        } else {
+            $querybuilder = Warehouse::all();
+        }
+        
+        return view('warehouse.index', ['data' => $querybuilder, 'search' => $search]);
     }
     public function dataKonfigurasi()
     {

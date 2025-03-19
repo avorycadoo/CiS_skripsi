@@ -22,6 +22,7 @@
                             <th>Address</th>
                             <th>Phone Number</th>
                             <th>Email</th>
+                            <th>Status Active</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -32,6 +33,13 @@
                                 <td>{{ $d->address }}</td>
                                 <td>{{ $d->phone_number }}</td>
                                 <td>{{ $d->email }}</td>
+                                <td>
+                                    @if ($d->status_active == 1)
+                                        <span class="badge badge-success">Active</span>
+                                    @else
+                                        <span class="badge badge-danger">Inactive</span>
+                                    @endif
+                                </td>
                                 <td class="d-flex">
                                     <a class="btn btn-warning mr-2" href="{{ route('customer.edit', $d->id) }}"
                                         style="background-color: #000000; color: white;">

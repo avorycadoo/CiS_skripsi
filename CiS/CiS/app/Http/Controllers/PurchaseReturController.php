@@ -13,14 +13,50 @@ class PurchaseReturController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        // Fetch all return records with their associated customers and products
-        $returs = Retur::with(['product'])
-            ->where('type', 'pembelian') // Filter by type
-            ->get();
-
-        return view('purchaseRetur.index', compact('returs'));
+        $search = $request->input('search');
+        $status = $request->input('status');
+        $date_from = $request->input('date_from');
+        $date_to = $request->input('date_to');
+        
+        // Start the query
+        $query = Retur::with(['product'])
+            ->where('type', 'pembelian');
+        
+        // Apply search filter (for invoice number)
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('invoice_number', 'like', '%' . $search . '%')
+                  ->orWhereHas('product', function($query) use ($search) {
+                      $query->where('name', 'like', '%' . $search . '%');
+                  });
+            });
+        }
+        
+        // Apply status filter
+        if ($status) {
+            $query->where('status', $status);
+        }
+        
+        // Apply date range filters
+        if ($date_from) {
+            $query->whereDate('created_at', '>=', $date_from);
+        }
+        
+        if ($date_to) {
+            $query->whereDate('created_at', '<=', $date_to);
+        }
+        
+        // Execute query
+        $returs = $query->get();
+        
+        // Get unique statuses for the filter dropdown
+        $statuses = Retur::where('type', 'pembelian')
+            ->distinct()
+            ->pluck('status');
+        
+        return view('purchaseRetur.index', compact('returs', 'statuses', 'search', 'status', 'date_from', 'date_to'));
     }
 
     public function detail($id)

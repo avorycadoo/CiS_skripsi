@@ -64,12 +64,15 @@ class AuthController extends Controller
             'password' => 'required|string|min:6|confirmed'
         ]);
     
+        $userCount = User::count();
+        $roleId = ($userCount === 0) ? 2 : 1;
+        
         $user = User::create([
             'username' => $request->name, // Set username from name input
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'status_active' => 1, // Assuming you want to activate the user
-            'roles_id' => 2 // Default role, adjust as needed
+            'roles_id' => $roleId // Assign role based on whether this is the first user
         ]);
     
         // Automatically log in the user after registration

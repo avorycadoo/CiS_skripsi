@@ -22,10 +22,12 @@
                         <select class="form-control" name="sales_cust_id" required>
                             <option value="">Select Customer</option>
                             @foreach ($customers as $customer)
-                                <option value="{{ $customer->id }}">{{ $customer->name }}</option>
+                                @if ($customer->status_active == 1)
+                                    <option value="{{ $customer->id }}">{{ $customer->name }}</option>
+                                @endif
                             @endforeach
                         </select>
-                        <small class="form-text text-muted">Please select a customer.</small>
+                        <small class="form-text text-muted">Only active customers are displayed.</small>
                     </div>
 
                     <!-- Employee Selection -->
@@ -122,6 +124,8 @@
                                                     {{ $discount->min_value ?? 20 }} products</small>
                                             @endif
 
+
+
                                             <div class="ms-4 mt-2 discount-value-input" style="display: none;">
                                                 <div class="input-group" style="max-width: 200px;">
                                                     <input type="number" class="form-control"
@@ -191,7 +195,7 @@
                     @if ($activePayments->isNotEmpty())
                         <div class="form-group">
                             <label for="payment_methods_id">Payment Method</label>
-                            <select class="form-control" name="payment_methods_id" required>
+                            <select class="form-control" name="payment_methods_id" id="payment_methods_id" required>
                                 <option value="">Select Payment Method</option>
                                 @foreach ($activePayments as $paymentMethod)
                                     <option value="{{ $paymentMethod->id }}">{{ $paymentMethod->name }}</option>
@@ -199,6 +203,15 @@
                             </select>
                             <small id="paymentMethodHelp" class="form-text text-muted">Please select a payment
                                 method</small>
+                        </div>
+
+                        <!-- Add the card number field - initially hidden -->
+                        <div class="form-group" id="card_number_container" style="display: none;">
+                            <label for="card_number">Credit Card Number</label>
+                            <input type="text" class="form-control" id="card_number" name="card_number"
+                                maxlength="16" placeholder="Enter 16-digit card number">
+                            <small class="form-text text-muted">Please enter your 16-digit credit card number without
+                                spaces</small>
                         </div>
                     @else
                         <p>No active Payment available.</p>
@@ -229,14 +242,18 @@
     <script>
         let totalPrice = 0; // Initialize total price
 
-
+        // Function to format numbers with Indonesian formatting (periods for thousands)
+        function formatIDR(number) {
+            return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        }
 
         function getPrice(selectElement) {
             const priceInput = document.getElementById('price');
+            const quantityInput = document.getElementById('quantity');
             const selectedOption = selectElement.options[selectElement.selectedIndex];
             const price = selectedOption.getAttribute('data-price') || 0;
-            priceInput.value = price;
             const stock = parseInt(selectedOption.getAttribute('data-stock') || 0);
+
             // Update price field
             priceInput.value = price;
 
@@ -257,6 +274,47 @@
         document.addEventListener('DOMContentLoaded', function() {
             const products = []; // Initialize an array to hold products
             const productsInput = document.getElementById('productsInput');
+            const paymentMethodSelect = document.getElementById('payment_methods_id');
+            const cardNumberContainer = document.getElementById('card_number_container');
+            const cardNumberInput = document.getElementById('card_number');
+
+            // Function to toggle the credit card number field
+            function toggleCardNumberField() {
+                // Check for the exact payment method "S-Credit Card"
+                const selectedOption = paymentMethodSelect.options[paymentMethodSelect.selectedIndex];
+                const isCreditCard = selectedOption.text === 'S-Credit Card';
+
+                // Show/hide card number field based on selection
+                if (isCreditCard) {
+                    cardNumberContainer.style.display = 'block';
+                    cardNumberInput.required = true;
+                } else {
+                    cardNumberContainer.style.display = 'none';
+                    cardNumberInput.required = false;
+                    cardNumberInput.value = ''; // Clear the input when not used
+                }
+            }
+
+            // Initial check when page loads
+            if (paymentMethodSelect) {
+                toggleCardNumberField();
+
+                // Add event listener for changes to the payment method
+                paymentMethodSelect.addEventListener('change', toggleCardNumberField);
+            }
+
+            // Add validation for credit card number (numbers only)
+            if (cardNumberInput) {
+                cardNumberInput.addEventListener('input', function() {
+                    // Remove any non-numeric characters
+                    this.value = this.value.replace(/[^\d]/g, '');
+
+                    // Limit to 16 digits
+                    if (this.value.length > 16) {
+                        this.value = this.value.slice(0, 16);
+                    }
+                });
+            }
 
             // Call updateTotalPrice on page load to ensure initial calculation
             updateTotalPrice();
@@ -298,13 +356,14 @@
                 const tableBody = document.querySelector('#productTable tbody');
                 const row = document.createElement('tr');
 
+                // Format with thousand separators
                 row.innerHTML = `
-        <td>${productName}</td>
-        <td>Rp ${price.toFixed(2)}</td>
-        <td>${quantity}</td>
-        <td>Rp ${(amount).toFixed(2)}</td>
-        <td><button type="button" class="btn btn-danger btn-sm remove-product">Remove</button></td>
-    `;
+                    <td>${productName}</td>
+                    <td>Rp ${formatIDR(price.toFixed(0))}</td>
+                    <td>${quantity}</td>
+                    <td>Rp ${formatIDR(amount.toFixed(0))}</td>
+                    <td><button type="button" class="btn btn-danger btn-sm remove-product">Remove</button></td>
+                `;
 
                 tableBody.appendChild(row);
 
@@ -403,8 +462,6 @@
                 });
             });
 
-            // Add this to your blade template where you handle discount logic
-
             function updateTotalPrice() {
                 const rows = document.querySelectorAll('#productTable tbody tr');
                 let totalPrice = 0;
@@ -412,18 +469,20 @@
                 let hasProducts = false;
 
                 rows.forEach(row => {
-                    const amount = parseFloat(row.children[3].textContent.replace('Rp ', '').replace(/,/g,
-                        '')) || 0;
+                    // Get the amount text, remove "Rp " prefix and thousand separators
+                    const amountText = row.children[3].textContent.replace('Rp ', '').replace(/\./g, '')
+                        .replace(/,/g, '');
+                    const amount = parseFloat(amountText) || 0;
                     const quantity = parseInt(row.children[2].textContent) || 0;
                     totalPrice += amount;
                     totalQuantity += quantity;
                     if (quantity >= 1) hasProducts = true;
                 });
 
-                // Display the total price without discount or shipping
+                // Display the total price without discount or shipping with thousand separators
                 const totalPriceElement = document.getElementById('totalPrice');
                 if (totalPriceElement) {
-                    totalPriceElement.textContent = `Rp ${totalPrice.toFixed(2)}`;
+                    totalPriceElement.textContent = `Rp ${formatIDR(totalPrice.toFixed(0))}`;
                 }
 
                 // Default values for discount and shipping
@@ -439,7 +498,7 @@
                     let volumeDiscountRadio = document.querySelector(
                         'input[data-name="Discount on the number of product purchases"]');
 
-                    // Get minimum values from data attributes (set these in the blade template)
+                    // Get minimum values from data attributes
                     const minPurchaseAmount = parseFloat(minimumPurchaseRadio ? minimumPurchaseRadio.getAttribute(
                         'data-min-value') : 2000000);
                     const minProductQuantity = parseInt(volumeDiscountRadio ? volumeDiscountRadio.getAttribute(
@@ -506,14 +565,12 @@
                 // Calculate final price
                 const finalPrice = totalPrice - discountAmount + shippingValue;
 
-                // Update final price elements
+                // Update final price elements with formatted numbers
                 const finalPriceElement = document.getElementById('finalPrice');
                 const finalPriceInput = document.getElementById('final_price');
 
                 if (finalPriceElement) {
-                    finalPriceElement.innerText = 'Rp ' + Math.max(finalPrice, 0).toLocaleString('id-ID', {
-                        minimumFractionDigits: 2
-                    });
+                    finalPriceElement.innerText = `Rp ${formatIDR(Math.max(finalPrice, 0).toFixed(0))}`;
                 }
 
                 if (finalPriceInput) {

@@ -10,10 +10,18 @@ class CategoriesController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $querybuilder = Categories::all(); // ini untuk pake model
-        return view('categories.index', ['data' => $querybuilder]);
+        $search = $request->input('search');
+    
+        // Query with search filter if provided
+        if ($search) {
+            $querybuilder = Categories::where('name', 'LIKE', '%' . $search . '%')->get();
+        } else {
+            $querybuilder = Categories::all();
+        }
+        
+        return view('categories.index', ['data' => $querybuilder, 'search' => $search]);
     }
 
     /**

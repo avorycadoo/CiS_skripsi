@@ -60,22 +60,85 @@ class SalesController extends Controller
     /**
      * Display the list of sales that need shipping
      */
-    public function shipping()
+    public function shipping(Request $request)
     {
-        // Get all sales with no shipped date (pending shipment)
-        $pendingShipments = Sales::whereNull('shipped_date')
+        // Get search parameters
+        $search = $request->input('search');
+        $customer_id = $request->input('customer_id');
+        $date_from = $request->input('date_from');
+        $date_to = $request->input('date_to');
+        $shipping_type = $request->input('shipping_type', 'all'); // 'pending', 'shipped', or 'all'
+        
+        // Base queries
+        $pendingQuery = Sales::whereNull('shipped_date')
             ->with(['customer', 'paymentMethod', 'salesDetail.product'])
-            ->orderBy('date', 'asc')
-            ->get();
-        
-        // Get all sales that have been shipped
-        $shippedOrders = Sales::whereNotNull('shipped_date')
+            ->orderBy('date', 'asc');
+            
+        $shippedQuery = Sales::whereNotNull('shipped_date')
             ->with(['customer', 'paymentMethod'])
-            ->orderBy('id', 'desc')
-            ->take(10) // Limit to most recent 10 shipped orders
-            ->get();
+            ->orderBy('id', 'desc');
         
-        return view('sales.shipping', compact('pendingShipments', 'shippedOrders'));
+        // Apply filters to both queries
+        if ($search) {
+            $searchTerm = '%' . $search . '%';
+            
+            $pendingQuery->where(function($query) use ($searchTerm) {
+                $query->where('noNota', 'like', $searchTerm)
+                    ->orWhereHas('customer', function($q) use ($searchTerm) {
+                        $q->where('name', 'like', $searchTerm);
+                    });
+            });
+            
+            $shippedQuery->where(function($query) use ($searchTerm) {
+                $query->where('noNota', 'like', $searchTerm)
+                    ->orWhereHas('customer', function($q) use ($searchTerm) {
+                        $q->where('name', 'like', $searchTerm);
+                    })
+                    ->orWhere('recipients_name', 'like', $searchTerm)
+                    ->orWhere('shipping_address', 'like', $searchTerm);
+            });
+        }
+        
+        if ($customer_id) {
+            $pendingQuery->where('sales_cust_id', $customer_id);
+            $shippedQuery->where('sales_cust_id', $customer_id);
+        }
+        
+        if ($date_from) {
+            $pendingQuery->whereDate('date', '>=', $date_from);
+            $shippedQuery->whereDate('date', '>=', $date_from);
+        }
+        
+        if ($date_to) {
+            $pendingQuery->whereDate('date', '<=', $date_to);
+            $shippedQuery->whereDate('date', '<=', $date_to);
+        }
+        
+        // Get the results
+        $pendingShipments = ($shipping_type == 'all' || $shipping_type == 'pending') ? $pendingQuery->get() : collect([]);
+        
+        // For shipped orders, only limit if no search filters are applied
+        if ($shipping_type == 'all' || $shipping_type == 'shipped') {
+            $shippedOrders = ($search || $customer_id || $date_from || $date_to) 
+                ? $shippedQuery->get() 
+                : $shippedQuery->take(10)->get();
+        } else {
+            $shippedOrders = collect([]);
+        }
+        
+        // Get customers for dropdown
+        $customers = \App\Models\Customer::where('status_active', 1)->orderBy('name')->get();
+        
+        return view('sales.shipping', compact(
+            'pendingShipments', 
+            'shippedOrders', 
+            'customers',
+            'search',
+            'customer_id',
+            'date_from',
+            'date_to',
+            'shipping_type'
+        ));
     }
 
     /**
@@ -712,6 +775,7 @@ class SalesController extends Controller
                     'shipped_date' => $request->input('sales_shipdate'),
                     'employes_id' => $request->input('sales_employes_id'),
                     'payment_methods_id' => $request->input('payment_methods_id'),
+                    'card_number' => $request->input('card_number'),
                     'customers_id' => $request->input('sales_cust_id'),
                     'shipping_cost' => $request->input('shipping_cost', 0),
                     'discount' => $request->input('sales_disc', 0),

@@ -91,4 +91,7 @@ Route::middleware('auth')->group(function () {
     Route::get('pos', [PosController::class, 'index'])->name('pos.index');
     Route::post('pos/store', [PosController::class, 'store'])->name('pos.store');
     Route::get('/pos/{id}', [PosController::class, 'print'])->name('pos.print');
+
+    Route::put('/users/{id}/update-role', [App\Http\Controllers\UserController::class, 'updateRole'])->name('update.user.role');
+
 });

@@ -10,8 +10,6 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
 
-
-
     <title>Electronics Configurations App</title>
 
     <!-- Custom fonts for this template-->
@@ -30,10 +28,32 @@
 
     <!-- Page Wrapper -->
     <div id="wrapper">
+        @php
+            // Get all menu items that the user has access to
+            use App\Http\Controllers\MenuController;
+            
+            // Check if the current user is an active employee
+            $isActiveEmployee = false;
+            if (Auth::check()) {
+                $user = Auth::user();
+                // Check employee status directly from the users table or from the employees table
+                $isActiveEmployee = $user->status_active == 1;
+            }
+            
+            // Only get authorized menus if the employee is active
+            $menuItems = $isActiveEmployee ? MenuController::getAuthorizedMenus() : collect([]);
+            $hasConfigAccess = $isActiveEmployee ? MenuController::hasConfigAccess() : false;
 
+            // Define a helper function to check if current route is active
+            function isRouteActive($routeName)
+            {
+                return request()->routeIs($routeName) ? 'active' : '';
+            }
+        @endphp
         <!-- Sidebar -->
         <ul style="background: rgb(70, 5, 5); padding-top: 20px;"
             class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+
             <!-- Sidebar - Brand -->
             <a class="sidebar-brand d-flex align-items-center justify-content-center" href="/">
                 <div class="sidebar-brand-icon rotate-n-15">
@@ -42,155 +62,189 @@
                 <div class="sidebar-brand-text mx-3">Electronics Configurations App</div>
             </a>
 
-            <li class="nav-item">
-                <a class="nav-link" href="{{ route('pos.index') }}">
-                    <i class="fas fa-fw fa-cart-plus"></i>
-                    <span>POS Cashier</span>
-                </a>
-            </li>
+            @if($isActiveEmployee)
+                <!-- Display POS Cashier option -->
+                @if ($menuItems->contains('id', 1))
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('pos.index') }}">
+                            <i class="fas fa-fw fa-cart-plus"></i>
+                            <span>POS Cashier</span>
+                        </a>
+                    </li>
+                @endif
 
-            <!-- Divider -->
-            <hr class="sidebar-divider my-0">
+                <!-- Divider -->
+                <hr class="sidebar-divider my-0">
 
-            <!-- Nav Item - Dashboard -->
-            <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#salesModuleMenu"
-                    aria-expanded="false" aria-controls="salesModuleMenu">
-                    <i class="fas fa-fw fa-cash-register"></i>
-                    <span>Modul Penjualan</span>
-                </a>
-                <div id="salesModuleMenu" class="collapse">
-                    <div class="bg-white py-2 collapse-inner rounded">
-                        {{-- <a class="collapse-item" href="penjualan">
-                            <i class="fas fa-fw fa-chart-line"></i>
-                            <span>Nota Penjualan</span>
-                        </a> --}}
-                        <a class="collapse-item" href="sales">
-                            <i class="fas fa-fw fa-file-invoice-dollar"></i>
-                            <span>Transaction Sales</span>
+                <!-- Display Sales Module options -->
+                @if ($menuItems->contains('id', 2))
+                    <li class="nav-item">
+                        <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#salesModuleMenu"
+                            aria-expanded="false" aria-controls="salesModuleMenu">
+                            <i class="fas fa-fw fa-cash-register"></i>
+                            <span>Sales Module</span>
+                        </a>
+                        <div id="salesModuleMenu" class="collapse">
+                            <div class="bg-white py-2 collapse-inner rounded">
+                                <a class="collapse-item" href="{{ url('sales') }}">
+                                    <i class="fas fa-fw fa-file-invoice-dollar"></i>
+                                    <span>Transaction Sales</span>
+                                </a>
+
+                                <a class="collapse-item" href="{{ url('salesShipping') }}">
+                                    <i class="fas fa-fw fa-truck"></i>
+                                    <span>Shipping</span>
+                                </a>
+
+                                @if($hasConfigAccess)
+                                <a class="collapse-item" href="{{ url('salesKonfigurasi') }}">
+                                    <i class="fas fa-fw fa-cogs"></i>
+                                    <span>Sales Configurations</span>
+                                </a>
+                                @endif
+
+                                <a class="collapse-item" href="{{ url('salesRetur') }}">
+                                    <i class="fas fa-fw fa-undo-alt"></i>
+                                    <span>Sales Return</span>
+                                </a>
+                            </div>
+                        </div>
+                    </li>
+                @endif
+
+                <!-- Display Purchase Module options -->
+                @if ($menuItems->contains('id', 3))
+                    <li class="nav-item">
+                        <a class="nav-link collapsed" href="#" data-toggle="collapse"
+                            data-target="#purchaseModuleMenu" aria-expanded="false" aria-controls="purchaseModuleMenu">
+                            <i class="fas fa-fw fa-shopping-cart"></i>
+                            <span>Purchase Module</span>
                         </a>
 
-                        <a class="collapse-item" href="salesShipping">
-                            <i class="fas fa-fw fa-truck"></i>
-                            <span>Shipping</span>
-                        </a>
+                        <div id="purchaseModuleMenu" class="collapse">
+                            <div class="bg-white py-2 collapse-inner rounded">
+                                <a class="collapse-item" href="{{ url('purchase') }}">
+                                    <i class="fas fa-fw fa-file-invoice"></i>
+                                    <span>Transaction Purchase</span>
+                                </a>
 
-                        <a class="collapse-item" href="salesKonfigurasi">
-                            <i class="fas fa-fw fa-cogs"></i>
-                            <span>Sales Configurations</span>
-                        </a>
+                                <a class="collapse-item" href="{{ url('purchaseShipping') }}">
+                                    <i class="fas fa-fw fa-truck"></i>
+                                    <span>Receive</span>
+                                </a>
 
-                        <a class="collapse-item" href="salesRetur">
-                            <i class="fas fa-fw fa-undo-alt"></i>
-                            <span>Sales Return</span>
-                        </a>
+                                @if($hasConfigAccess)
+                                <a class="collapse-item" href="{{ url('purchaseKonfigurasi') }}">
+                                    <i class="fas fa-fw fa-cogs"></i>
+                                    <span>Purchase Configuration</span>
+                                </a>
+                                @endif
 
-                    </div>
-                </div>
-            </li>
+                                <a class="collapse-item" href="{{ url('purchaseRetur') }}">
+                                    <i class="fas fa-fw fa-undo-alt"></i>
+                                    <span>Purchase Return</span>
+                                </a>
+                            </div>
+                        </div>
+                    </li>
+                @endif
 
-            <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#purchaseModuleMenu"
-                    aria-expanded="false" aria-controls="purchaseModuleMenu">
-                    <i class="fas fa-fw fa-shopping-cart"></i>
-                    <span>Modul Pembelian</span>
-                </a>
-
-                <div id="purchaseModuleMenu" class="collapse">
-                    <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="purchase">
-                            <i class="fas fa-fw fa-file-invoice"></i>
-                            <span>Transaction Purchase</span>
-                        </a>
-
-                        <a class="collapse-item" href="purchaseShipping">
-                            <i class="fas fa-fw fa-truck"></i>
-                            <span>Receive</span>
-                        </a>
-
-                        <a class="collapse-item" href="purchaseKonfigurasi">
-                            <i class="fas fa-fw fa-cogs"></i>
-                            <span>Purchase Configuration</span>
-                        </a>
-
-                        <a class="collapse-item" href="purchaseRetur">
-                            <i class="fas fa-fw fa-undo-alt"></i>
-                            <span>Purchase Return</span>
-                        </a>
-
-                    </div>
-                </div>
-            </li>
-
-            <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#inventoriesMenu"
-                    aria-expanded="false" aria-controls="inventoriesMenu">
-                    <i class="fas fa-fw fa-warehouse"></i>
-                    <span>Modul Inventory</span>
-                </a>
-                <div id="inventoriesMenu" class="collapse">
-                    <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="product">
-                            <i class="fas fa-fw fa-box-open"></i>
-                            <span>Product Management</span>
-                        </a>
-
-                        <a class="collapse-item" href="profitLoss">
-                            <i class="fas fa-fw fa-chart-line"></i>
-                            <span>Profit Loss</span>
-                        </a>
-
-                        <a class="collapse-item" href="{{ route('categories.index') }}">
-                            <i class="fas fa-fw fa-tags"></i>
-                            <span>Category</span>
-                        </a>
-                        <a class="collapse-item" href="{{ route('warehouse.index') }}">
+                <!-- Display Inventory Module options -->
+                @if ($menuItems->contains('id', 4))
+                    <li class="nav-item">
+                        <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#inventoriesMenu"
+                            aria-expanded="false" aria-controls="inventoriesMenu">
                             <i class="fas fa-fw fa-warehouse"></i>
-                            <span>Warehouse</span>
+                            <span>Inventory Module</span>
                         </a>
-                        <a class="collapse-item" href="{{ route('suppliers.index') }}">
-                            <i class="fas fa-fw fa-truck"></i>
-                            <span>Suppliers</span>
-                        </a>
+                        <div id="inventoriesMenu" class="collapse">
+                            <div class="bg-white py-2 collapse-inner rounded">
+                                <a class="collapse-item" href="{{ url('product') }}">
+                                    <i class="fas fa-fw fa-box-open"></i>
+                                    <span>Product Management</span>
+                                </a>
 
-                        <a class="collapse-item" href="{{ route('warehouse.konfigurasi') }}">
-                            <i class="fas fa-fw fa-cogs"></i>
-                            <span>Inventory Configurations</span>
-                        </a>
-                    </div>
-                </div>
-            </li>
+                                @if($hasConfigAccess)
+                                <a class="collapse-item" href="{{ url('profitLoss') }}">
+                                    <i class="fas fa-fw fa-chart-line"></i>
+                                    <span>Profit Loss</span>
+                                </a>
+                                @endif
 
-            <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#settingsMenu"
-                    aria-expanded="false" aria-controls="settingsMenu">
-                    <i class="fas fa-fw fa-cog"></i>
-                    <span>Settings</span>
-                </a>
-                <div id="settingsMenu" class="collapse">
-                    <div class="bg-white py-2 collapse-inner rounded">
-                        <a class="collapse-item" href="{{ route('customer.index') }}">
-                            <i class="fas fa-fw fa-user"></i>
-                            <span>Data Customer</span>
+                                <a class="collapse-item" href="{{ route('categories.index') }}">
+                                    <i class="fas fa-fw fa-tags"></i>
+                                    <span>Category</span>
+                                </a>
+                                <a class="collapse-item" href="{{ route('warehouse.index') }}">
+                                    <i class="fas fa-fw fa-warehouse"></i>
+                                    <span>Warehouse</span>
+                                </a>
+                                <a class="collapse-item" href="{{ route('suppliers.index') }}">
+                                    <i class="fas fa-fw fa-truck"></i>
+                                    <span>Suppliers</span>
+                                </a>
+
+                                @if($hasConfigAccess)
+                                <a class="collapse-item" href="{{ route('warehouse.konfigurasi') }}">
+                                    <i class="fas fa-fw fa-cogs"></i>
+                                    <span>Inventory Configurations</span>
+                                </a>
+                                @endif
+                            </div>
+                        </div>
+                    </li>
+                @endif
+
+                <!-- Display Settings options -->
+                @if ($menuItems->contains('id', 5))
+                    <li class="nav-item">
+                        <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#settingsMenu"
+                            aria-expanded="false" aria-controls="settingsMenu">
+                            <i class="fas fa-fw fa-cog"></i>
+                            <span>Settings</span>
                         </a>
-                        <a class="collapse-item" href="{{ route('employe.index') }}">
-                            <i class="fas fa-fw fa-users"></i>
-                            <span>Data Employee</span>
-                        </a>
-                        <a class="collapse-item" href="{{ route('companies.index') }}">
-                            <i class="fas fa-fw fa-building"></i>
-                            <span>Companies</span>
-                        </a>
-                    </div>
+                        <div id="settingsMenu" class="collapse">
+                            <div class="bg-white py-2 collapse-inner rounded">
+                                <a class="collapse-item" href="{{ route('customer.index') }}">
+                                    <i class="fas fa-fw fa-user"></i>
+                                    <span>Customer's Data</span>
+                                </a>
+                                <a class="collapse-item" href="{{ route('employe.index') }}">
+                                    <i class="fas fa-fw fa-users"></i>
+                                    <span>Employee's Data</span>
+                                </a>
+                                <a class="collapse-item" href="{{ route('companies.index') }}">
+                                    <i class="fas fa-fw fa-building"></i>
+                                    <span>Companies</span>
+                                </a>
+                            </div>
+                        </div>
+                    </li>
+                @endif
+            @else
+                <!-- Show a message for inactive employees -->
+                <div class="text-center text-white p-3">
+                    <i class="fas fa-exclamation-triangle mb-3" style="font-size: 2rem;"></i>
+                    <p>Your account is currently inactive. Please contact an administrator.</p>
                 </div>
-            </li>
+            @endif
 
             <!-- Divider -->
             <hr class="sidebar-divider">
 
+            <!-- Display user role information -->
+            <div class="text-center mb-2 text-white">
+                <small>Logged in as: {{ Auth::user()->username ?? 'Guest' }}</small><br>
+                <small>Role:
+                    {{ DB::table('roles')->where('id', Auth::user()->roles_id ?? 0)->value('name') ?? 'Unknown' }}</small>
+                @if(Auth::check())
+                    <br>
+                    <small>Status: {{ Auth::user()->status_active == 1 ? 'Active' : 'Inactive' }}</small>
+                @endif
+            </div>
 
             <div class="text-center mb-2">
-                <form action="{{ route('logout', ['id' => 1]) }}" method="post">
+                <form action="{{ route('logout') }}" method="post">
                     @csrf
                     <button type="submit" class="btn btn-danger">Logout</button>
                 </form>
@@ -200,16 +254,6 @@
             <div class="text-center d-none d-md-inline">
                 <button class="rounded-circle border-0" id="sidebarToggle"></button>
             </div>
-
-            <!-- Sidebar Message -->
-            {{-- <div class="sidebar-card d-none d-lg-flex">
-                <img class="sidebar-card-illustration mb-2" src="img/undraw_rocket.svg" alt="...">
-                <p class="text-center mb-2"><strong>SB Admin Pro</strong> is packed with premium features, components,
-                    and more!</p>
-                <a class="btn btn-success btn-sm" href="https://startbootstrap.com/theme/sb-admin-pro">Upgrade to
-                    Pro!</a>
-            </div> --}}
-
         </ul>
         <!-- End of Sidebar -->
 
@@ -219,67 +263,16 @@
             <!-- Main Content -->
             <div id="content" style="padding-top: 20px;">
 
-                <!-- Topbar -->
-                {{-- <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
-
-                    <!-- Sidebar Toggle (Topbar) -->
-                    <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
-                        <i class="fa fa-bars"></i>
-                    </button>
-
-                    <!-- Topbar Search -->
-                    <form
-                        class="d-none d-sm-inline-block form-inline mr-auto ml-md-3 my-2 my-md-0 mw-100 navbar-search">
-                        <div class="input-group">
-                            <input type="text" class="form-control bg-light border-0 small"
-                                placeholder="Search for..." aria-label="Search" aria-describedby="basic-addon2">
-                            <div class="input-group-append">
-                                <button class="btn btn-primary" type="button">
-                                    <i class="fas fa-search fa-sm"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-
-                    <!-- Topbar Navbar -->
-                    <ul class="navbar-nav ml-auto">
-                        <!-- Nav Item - User Information -->
-                        <li class="nav-item dropdown no-arrow">
-                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
-                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                <span class="mr-2 d-none d-lg-inline text-gray-600 small">Douglas McGee</span>
-                                <img class="img-profile rounded-circle" src="img/undraw_profile.svg">
-                            </a>
-                            <!-- Dropdown - User Information -->
-                            <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in"
-                                aria-labelledby="userDropdown">
-                                <a class="dropdown-item" href="#">
-                                    <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
-                                    Profile
-                                </a>
-                                <a class="dropdown-item" href="#">
-                                    <i class="fas fa-cogs fa-sm fa-fw mr-2 text-gray-400"></i>
-                                    Settings
-                                </a>
-                                <a class="dropdown-item" href="#">
-                                    <i class="fas fa-list fa-sm fa-fw mr-2 text-gray-400"></i>
-                                    Activity Log
-                                </a>
-                                <div class="dropdown-divider"></div>
-                                <a class="dropdown-item" href="#" data-toggle="modal"
-                                    data-target="#logoutModal">
-                                    <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
-                                    Logout
-                                </a>
-                            </div>
-                        </li>
-                    </ul>
-
-                </nav> --}}
-                <!-- End of Topbar -->
-
                 <!-- Begin Page Content -->
                 <div class="container-fluid">
+                    @if(!$isActiveEmployee && Auth::check())
+                        <div class="alert alert-danger text-center">
+                            <h4><i class="fas fa-exclamation-circle"></i> Account Inactive</h4>
+                            <p>Your account is currently inactive. You have limited access to the system.</p>
+                            <p>Please contact an administrator for assistance.</p>
+                        </div>
+                    @endif
+                    
                     @yield('content')
                 </div>
                 <!-- End of Main Content -->
@@ -294,28 +287,6 @@
         <a class="scroll-to-top rounded" href="#page-top">
             <i class="fas fa-angle-up"></i>
         </a>
-
-        <!-- Logout Modal-->
-        <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
-            aria-hidden="true">
-            <div class="modal-dialog" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="exampleModalLabel">Ready to Leave?</h5>
-                        <button class="close" type="button" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">×</span>
-                        </button>
-                    </div>
-                    <div class="modal-body">Select "Logout" below if you are ready to end your current session.</div>
-                    <div class="modal-footer">
-                        <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
-                        <a class="btn btn-primary" href="login.html">Logout</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-
 
         <!-- Bootstrap core JavaScript-->
         <script src="{{ asset('conquer/vendor/jquery/jquery.min.js') }}"></script>
@@ -383,9 +354,6 @@
                 });
             </script>
         @endif
-
-
-        <!-- Yield for additional scripts -->
 
 </body>
 

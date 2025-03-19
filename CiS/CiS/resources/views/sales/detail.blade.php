@@ -9,6 +9,11 @@
                 <h5><strong>Customer:</strong> {{ $sale->customer->name }}</h5>
                 <h5><strong>Total Price:</strong> Rp {{ number_format($sale->total_price, 0, ',', '.') }}</h5>
                 <h5><strong>Payment Method:</strong> {{ $sale->paymentMethod->name }}</h5>
+
+                @if ($sale->card_number)
+                    <h5><strong>Card Number:</strong> {{ $sale->card_number }}</h5>
+                @endif
+
                 <h5><strong>Date:</strong> {{ $sale->date }}</h5>
                 <h5><strong>Shipped Date:</strong> {{ $sale->shipped_date }}</h5>
                 <h5><strong>Discount:</strong> Rp {{ number_format($sale->discount, 0, ',', '.') }}</h5>

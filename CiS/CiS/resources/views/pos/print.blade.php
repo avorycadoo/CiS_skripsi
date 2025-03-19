@@ -118,7 +118,7 @@
             <div class="receipt-header">BUKTI PEMBAYARAN SAH</div>
             
             <div class="invoice-info">
-                No. Invoice: {{ $sales->no_nota }}<br>
+                No. Invoice: {{ $sales->noNota }}<br>
                 Tanggal: {{ date('d/m/Y', strtotime($sales->sales_date)) }}
             </div>
         </div>

@@ -21,16 +21,52 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
-    
-        $products = Product::with('productImage')
-            ->where('status_active', 1)
-            ->when($search, function ($query, $search) {
-                return $query->where('name', 'like', '%' . $search . '%');
-            })
-            ->get();
-    
+        $category_id = $request->input('category_id');
+        $min_price = $request->input('min_price');
+        $max_price = $request->input('max_price');
+        $sort_by = $request->input('sort_by', 'name');
+        $sort_dir = $request->input('sort_dir', 'asc');
+        
+        $query = Product::with('productImage')
+            ->where('status_active', 1);
+            
+        // Apply search filter
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                  ->orWhere('desc', 'like', '%' . $search . '%');
+            });
+        }
+        
+        // Apply category filter
+        if ($category_id) {
+            $query->where('category_id', $category_id);
+        }
+        
+        // Apply price range filters
+        if ($min_price) {
+            $query->where('price', '>=', $min_price);
+        }
+        
+        if ($max_price) {
+            $query->where('price', '<=', $max_price);
+        }
+        
+        // Apply sorting
+        $query->orderBy($sort_by, $sort_dir);
+        
+        $products = $query->get();
+        $categories = \App\Models\Categories::all();
+        
         return view('product.index', [
             'datas' => $products,
+            'categories' => $categories,
+            'search' => $search,
+            'category_id' => $category_id,
+            'min_price' => $min_price,
+            'max_price' => $max_price,
+            'sort_by' => $sort_by,
+            'sort_dir' => $sort_dir
         ]);
     }
 
