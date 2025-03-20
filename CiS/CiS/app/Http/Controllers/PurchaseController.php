@@ -47,28 +47,108 @@ class PurchaseController extends Controller
         if ($request->filled('invoice')) {
             $query->where('noNota', $request->invoice);
         }
-        
+
+        $query->orderBy('purchase_date', 'desc');
+
         $datas = $query->get();
         
         return view('purchase.index', compact('datas', 'products', 'invoices'));
     }
 
-    public function shipping()
+    public function shipping(Request $request)
     {
-        // Get all purchases with no receive date (pending shipment)
-        $pendingShipments = Purchase::whereNull('receive_date')
+        // Get search parameters
+        $search = $request->input('search');
+        $supplier_id = $request->input('supplier_id');
+        $warehouse_id = $request->input('warehouse_id');
+        $date_from = $request->input('date_from');
+        $date_to = $request->input('date_to');
+        $status = $request->input('status', 'all'); // 'pending', 'received', or 'all'
+        
+        // Base queries
+        $pendingQuery = Purchase::whereNull('receive_date')
             ->with(['supplier', 'paymentMethod', 'warehouse', 'purchaseDetails.product'])
-            ->orderBy('purchase_date', 'asc')
-            ->get();
-        
-        // Get all purchases that have been received (shipped)
-        $shippedOrders = Purchase::whereNotNull('receive_date')
+            ->orderBy('purchase_date', 'asc');
+            
+        $receivedQuery = Purchase::whereNotNull('receive_date')
             ->with(['supplier', 'paymentMethod', 'warehouse'])
-            ->orderBy('id', 'desc')
-            ->take(10) // Limit to the most recent 10 shipped orders
-            ->get();
+            ->orderBy('id', 'desc');
         
-        return view('purchase.shipping', compact('pendingShipments', 'shippedOrders'));
+        // Apply search filter
+        if ($search) {
+            $searchTerm = '%' . $search . '%';
+            
+            $pendingQuery->where(function($query) use ($searchTerm) {
+                $query->where('noNota', 'like', $searchTerm)
+                    ->orWhereHas('supplier', function($q) use ($searchTerm) {
+                        $q->where('company_name', 'like', $searchTerm);
+                    });
+            });
+            
+            $receivedQuery->where(function($query) use ($searchTerm) {
+                $query->where('noNota', 'like', $searchTerm)
+                    ->orWhereHas('supplier', function($q) use ($searchTerm) {
+                        $q->where('company_name', 'like', $searchTerm);
+                    });
+            });
+        }
+        
+        // Apply supplier filter
+        if ($supplier_id) {
+            $pendingQuery->whereHas('supplier', function($query) use ($supplier_id) {
+                $query->where('id', $supplier_id);
+            });
+            
+            $receivedQuery->whereHas('supplier', function($query) use ($supplier_id) {
+                $query->where('id', $supplier_id);
+            });
+        }
+        
+        // Apply warehouse filter
+        if ($warehouse_id) {
+            $pendingQuery->where('warehouse_id', $warehouse_id);
+            $receivedQuery->where('warehouse_id', $warehouse_id);
+        }
+        
+        // Apply date range filters
+        if ($date_from) {
+            $pendingQuery->whereDate('purchase_date', '>=', $date_from);
+            $receivedQuery->whereDate('purchase_date', '>=', $date_from);
+        }
+        
+        if ($date_to) {
+            $pendingQuery->whereDate('purchase_date', '<=', $date_to);
+            $receivedQuery->whereDate('purchase_date', '<=', $date_to);
+        }
+        
+        // Get the results based on status filter
+        $pendingShipments = ($status == 'all' || $status == 'pending') ? $pendingQuery->get() : collect([]);
+        
+        // For received orders, only limit if no search filters are applied
+        if ($status == 'all' || $status == 'received') {
+            $shippedOrders = ($search || $supplier_id || $warehouse_id || $date_from || $date_to) 
+                ? $receivedQuery->get() 
+                : $receivedQuery->take(10)->get();
+        } else {
+            $shippedOrders = collect([]);
+        }
+        
+        // Get suppliers and warehouses for dropdowns
+        $suppliers = \App\Models\Suppliers::orderBy('company_name')->get();
+        $warehouses = \App\Models\Warehouse::orderBy('name')->get();
+        
+        return view('purchase.shipping', compact(
+            'pendingShipments', 
+            'shippedOrders', 
+            'suppliers',
+            'warehouses',
+            'search',
+            'supplier_id',
+            'warehouse_id',
+            'date_from',
+            'date_to',
+            'status'
+        ));
     }
     
 
@@ -512,12 +592,7 @@ class PurchaseController extends Controller
             
             // Add debugging
             \Log::info('Is supplier shipping: ' . ($isSupplierShipping ? 'true' : 'false'));
-    
-            // Set receive_date based on shipping method
-            // $receiveDate = $isSupplierShipping ? null : now();
-            
-            // Add debugging
-            // \Log::info('Receive date: ' . ($receiveDate ? $receiveDate : 'null'));
+
     
             $noNota = 'PUR' . str_pad(DB::table('purchase')->max('id') + 1, 4, '0', STR_PAD_LEFT);
             

@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Auth;
+use Schema;
 
 class SalesController extends Controller
 {
@@ -21,36 +22,47 @@ class SalesController extends Controller
      */
     public function index(Request $request)
     {
-        // Get the required data for dropdowns
         $products = Product::all();
-        // Get all unique invoice numbers
         $invoices = Sales::select('noNota')->distinct()->get();
     
         $query = Sales::with(['customer', 'paymentMethod', 'salesDetail.product'])
-        ->whereNotNull('shipped_date'); 
+            ->whereNotNull('shipped_date'); 
     
-        // Apply date range filter
+        // filter
         if ($request->filled('start_date')) {
-            $startDate = \Carbon\Carbon::createFromFormat('d/m/Y', $request->start_date)->startOfDay();
-            $query->whereDate('date', '>=', $startDate);
+            try {
+                // Handle different date formats (both Y-m-d and d/m/Y)
+                $startDate = \Carbon\Carbon::parse($request->start_date)->startOfDay();
+                $query->whereDate('date', '>=', $startDate);
+            } catch (\Exception $e) {
+                // Log error or handle invalid date format
+            }
         }
     
         if ($request->filled('end_date')) {
-            $endDate = \Carbon\Carbon::createFromFormat('d/m/Y', $request->end_date)->endOfDay();
-            $query->whereDate('date', '<=', $endDate);
+            try {
+                // Handle different date formats (both Y-m-d and d/m/Y)
+                $endDate = \Carbon\Carbon::parse($request->end_date)->endOfDay();
+                $query->whereDate('date', '<=', $endDate);
+            } catch (\Exception $e) {
+                // Log error or handle invalid date format
+            }
         }
     
-        // Apply product filter
+        // product filter
         if ($request->filled('product_id')) {
             $query->whereHas('salesDetail', function($q) use ($request) {
                 $q->where('product_id', $request->product_id);
             });
         }
     
-        // Apply invoice filter
+        // invoice filter
         if ($request->filled('invoice')) {
             $query->where('noNota', $request->invoice);
         }
+    
+        // Order by sales date, newest first
+        $query->orderBy('date', 'desc');
     
         $datas = $query->get();
     
@@ -62,14 +74,12 @@ class SalesController extends Controller
      */
     public function shipping(Request $request)
     {
-        // Get search parameters
         $search = $request->input('search');
         $customer_id = $request->input('customer_id');
         $date_from = $request->input('date_from');
         $date_to = $request->input('date_to');
         $shipping_type = $request->input('shipping_type', 'all'); // 'pending', 'shipped', or 'all'
         
-        // Base queries
         $pendingQuery = Sales::whereNull('shipped_date')
             ->with(['customer', 'paymentMethod', 'salesDetail.product'])
             ->orderBy('date', 'asc');
@@ -78,7 +88,7 @@ class SalesController extends Controller
             ->with(['customer', 'paymentMethod'])
             ->orderBy('id', 'desc');
         
-        // Apply filters to both queries
+        // search filter
         if ($search) {
             $searchTerm = '%' . $search . '%';
             
@@ -93,17 +103,26 @@ class SalesController extends Controller
                 $query->where('noNota', 'like', $searchTerm)
                     ->orWhereHas('customer', function($q) use ($searchTerm) {
                         $q->where('name', 'like', $searchTerm);
-                    })
-                    ->orWhere('recipients_name', 'like', $searchTerm)
-                    ->orWhere('shipping_address', 'like', $searchTerm);
+                    });
+                
+                if (Schema::hasColumn('sales', 'shipping_address')) {
+                    $query->orWhere('shipping_address', 'like', $searchTerm);
+                }
             });
         }
         
+        // customer filter
         if ($customer_id) {
-            $pendingQuery->where('sales_cust_id', $customer_id);
-            $shippedQuery->where('sales_cust_id', $customer_id);
+            $pendingQuery->whereHas('customer', function($query) use ($customer_id) {
+                $query->where('id', $customer_id);
+            });
+            
+            $shippedQuery->whereHas('customer', function($query) use ($customer_id) {
+                $query->where('id', $customer_id);
+            });
         }
         
+        // date filters
         if ($date_from) {
             $pendingQuery->whereDate('date', '>=', $date_from);
             $shippedQuery->whereDate('date', '>=', $date_from);
@@ -114,10 +133,9 @@ class SalesController extends Controller
             $shippedQuery->whereDate('date', '<=', $date_to);
         }
         
-        // Get the results
+        // Get results
         $pendingShipments = ($shipping_type == 'all' || $shipping_type == 'pending') ? $pendingQuery->get() : collect([]);
         
-        // For shipped orders, only limit if no search filters are applied
         if ($shipping_type == 'all' || $shipping_type == 'shipped') {
             $shippedOrders = ($search || $customer_id || $date_from || $date_to) 
                 ? $shippedQuery->get() 
@@ -126,8 +144,8 @@ class SalesController extends Controller
             $shippedOrders = collect([]);
         }
         
-        // Get customers for dropdown
-        $customers = \App\Models\Customer::where('status_active', 1)->orderBy('name')->get();
+        // customers dropdown
+        $customers = Customer::where('status_active', 1)->orderBy('name')->get();
         
         return view('sales.shipping', compact(
             'pendingShipments', 
@@ -146,7 +164,7 @@ class SalesController extends Controller
      */
     public function shipDetail($id)
     {
-        // Load the sale with its related data
+        // Load sale with related data
         $sale = Sales::with(['customer', 'paymentMethod', 'salesDetail.product'])->findOrFail($id);
         
         return view('sales.ship-detail', compact('sale'));
@@ -160,10 +178,8 @@ class SalesController extends Controller
      */
     public function createShipping(Request $request)
     {
-        // Log request data untuk debug
         \Log::info('Shipping Request Data:', $request->all());
         
-        // Validasi dengan pendekatan composite key
         $validatedData = $request->validate([
             'product_id' => 'required|exists:product,id',
             'sale_id' => 'required|exists:sales,id',
@@ -174,11 +190,11 @@ class SalesController extends Controller
             'recipients_name' => 'nullable|string',
         ]);
     
-        // Get the product and sale
+        // Get product and sale
         $product = Product::find($validatedData['product_id']);
         $sale = Sales::find($validatedData['sale_id']);
         
-        // Get sales detail menggunakan composite key
+        // Get sales detail
         $salesDetail = DB::table('sales_detail')
             ->where('product_id', $validatedData['detail_product_id'])
             ->where('sales_id', $validatedData['detail_sales_id'])
@@ -215,21 +231,29 @@ class SalesController extends Controller
             return redirect()->back()->with('error', 'Cannot ship more than the remaining quantity (' . $remainingQuantity . ') for this invoice item');
         }
         
-        // Process COGS method dan pengurangan stok seperti sebelumnya...
-        $cogsMethod = strtolower($sale->cogs_method ?? 'average'); // Default to average
+        $cogsMethodId = $sale->cogs_method ?? 19; // Default to S-Average (19)
+        
+        $cogsMethod = 'average'; 
+        if ($cogsMethodId == 16 || $cogsMethodId == 18) { 
+            $cogsMethod = 'fifo';
+        }
+    
+        \Log::info('Using COGS method: ' . $cogsMethod . ' from ID: ' . $cogsMethodId);
         
         try {
             DB::beginTransaction();
             
-            // Process stock reduction based on COGS method
             if ($cogsMethod === 'fifo') {
-                // FIFO method - reduce stock from both product and product_fifo tables
+                // FIFO method - reduce stock from tabel product dan product_fifo 
+                \Log::info('Processing with FIFO method');
                 $productFifoEntries = DB::table('product_fifo')
                     ->where('product_id', $product->id)
                     ->where('stock', '>', 0)
                     ->orderBy('purchase_date', 'asc')
                     ->get();
     
+                \Log::info('Found ' . $productFifoEntries->count() . ' FIFO entries for product: ' . $product->id);
+                
                 $remainingToReduce = $validatedData['quantity_shipped'];
                 
                 // Reduce stock in FIFO order
@@ -238,6 +262,8 @@ class SalesController extends Controller
                     
                     $reduceQuantity = min($fifoEntry->stock, $remainingToReduce);
                     
+                    \Log::info('Reducing ' . $reduceQuantity . ' from FIFO entry ID: ' . $fifoEntry->id);
+                    
                     DB::table('product_fifo')
                         ->where('id', $fifoEntry->id)
                         ->update(['stock' => $fifoEntry->stock - $reduceQuantity]);
@@ -245,15 +271,15 @@ class SalesController extends Controller
                     $remainingToReduce -= $reduceQuantity;
                 }
                 
-                // If we couldn't reduce all from FIFO entries, log an error
                 if ($remainingToReduce > 0) {
                     \Log::warning('Not enough FIFO entries to reduce ' . $validatedData['quantity_shipped'] . ' units for product ' . $product->id);
                 }
                 
-                // Also reduce from main product stock
+                // reduce from main product stock
                 $product->stock -= $validatedData['quantity_shipped'];
             } else {
-                // Average method - only reduce from product table
+                // Average method - only reduce rabel product
+                \Log::info('Processing with Average method');
                 $product->stock -= $validatedData['quantity_shipped'];
             }
             
@@ -262,7 +288,6 @@ class SalesController extends Controller
             $product->save();
             
             // Ambil alamat pengiriman dan nama penerima
-            // Jika tidak diisi, gunakan data dari customer
             $shippingAddress = $validatedData['shipping_address'] ?? null;
             $recipientsName = $validatedData['recipients_name'] ?? null;
             
@@ -295,7 +320,6 @@ class SalesController extends Controller
             foreach ($salesDetails as $detail) {
                 $detailTotal = $detail->total_quantity;
                 
-                // Use composite key to check shipping history
                 $detailShipped = DB::table('shipping_history')
                     ->where('product_id', $detail->product_id)
                     ->where('sales_id', $detail->sales_id)
@@ -309,7 +333,6 @@ class SalesController extends Controller
             
             // Jika semua item dikirim, update shipped_date di sales
             if ($allDetailsFulfilledForThisInvoice) {
-                // Update using query builder to avoid timestamp issues
                 DB::table('sales')
                     ->where('id', $sale->id)
                     ->update(['shipped_date' => now()]);

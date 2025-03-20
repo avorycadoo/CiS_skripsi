@@ -17,13 +17,13 @@
 
     <div class="form-group">
         <label for="user_id_cust">Phone Number</label>
-        <input type="text" class="form-control" name="cust_phone" aria-describedby="userIdHelp" placeholder="Enter User ID">
+        <input type="text" class="form-control" name="cust_phone" aria-describedby="userIdHelp" placeholder="Enter Phone Number">
         <small id="userIdHelp" class="form-text text-muted">Please enter the Phone Number</small>
     </div>
 
     <div class="form-group">
         <label for="user_id_cust">Email</label>
-        <input type="text" class="form-control" name="cust_email" aria-describedby="userIdHelp" placeholder="Enter User ID">
+        <input type="text" class="form-control" name="cust_email" aria-describedby="userIdHelp" placeholder="Enter Email">
         <small id="userIdHelp" class="form-text text-muted">Please enter the Email</small>
     </div>
 
