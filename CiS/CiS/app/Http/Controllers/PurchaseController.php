@@ -17,15 +17,13 @@ class PurchaseController extends Controller
     
     public function index(Request $request)
     {
-        // Get the required data for dropdowns
         $products = Product::all();
-        // Get all unique invoice numbers
         $invoices = Purchase::select('noNota')->distinct()->get();
         
         $query = Purchase::with(['supplier', 'paymentMethod', 'warehouse', 'purchaseDetails.product'])
         ->whereNotNull('receive_date'); 
         
-        // Apply date range filter
+        // date filter
         if ($request->filled('start_date')) {
             $startDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->start_date)->startOfDay();
             $query->whereDate('purchase_date', '>=', $startDate);
@@ -36,14 +34,14 @@ class PurchaseController extends Controller
             $query->whereDate('purchase_date', '<=', $endDate);
         }
         
-        // Apply product filter
+        // product filter
         if ($request->filled('product_id')) {
             $query->whereHas('purchaseDetails', function($q) use ($request) {
                 $q->where('product_id', $request->product_id);
             });
         }
         
-        // Apply invoice filter
+        // invoice filter
         if ($request->filled('invoice')) {
             $query->where('noNota', $request->invoice);
         }
@@ -57,7 +55,6 @@ class PurchaseController extends Controller
 
     public function shipping(Request $request)
     {
-        // Get search parameters
         $search = $request->input('search');
         $supplier_id = $request->input('supplier_id');
         $warehouse_id = $request->input('warehouse_id');
@@ -65,7 +62,6 @@ class PurchaseController extends Controller
         $date_to = $request->input('date_to');
         $status = $request->input('status', 'all'); // 'pending', 'received', or 'all'
         
-        // Base queries
         $pendingQuery = Purchase::whereNull('receive_date')
             ->with(['supplier', 'paymentMethod', 'warehouse', 'purchaseDetails.product'])
             ->orderBy('purchase_date', 'asc');
@@ -74,7 +70,7 @@ class PurchaseController extends Controller
             ->with(['supplier', 'paymentMethod', 'warehouse'])
             ->orderBy('id', 'desc');
         
-        // Apply search filter
+        // search filter
         if ($search) {
             $searchTerm = '%' . $search . '%';
             
@@ -93,7 +89,7 @@ class PurchaseController extends Controller
             });
         }
         
-        // Apply supplier filter
+        // supplier filter
         if ($supplier_id) {
             $pendingQuery->whereHas('supplier', function($query) use ($supplier_id) {
                 $query->where('id', $supplier_id);
@@ -104,13 +100,13 @@ class PurchaseController extends Controller
             });
         }
         
-        // Apply warehouse filter
+        // warehouse filter
         if ($warehouse_id) {
             $pendingQuery->where('warehouse_id', $warehouse_id);
             $receivedQuery->where('warehouse_id', $warehouse_id);
         }
         
-        // Apply date range filters
+        // date filters
         if ($date_from) {
             $pendingQuery->whereDate('purchase_date', '>=', $date_from);
             $receivedQuery->whereDate('purchase_date', '>=', $date_from);
@@ -121,10 +117,9 @@ class PurchaseController extends Controller
             $receivedQuery->whereDate('purchase_date', '<=', $date_to);
         }
         
-        // Get the results based on status filter
+        // Get results based on status filter
         $pendingShipments = ($status == 'all' || $status == 'pending') ? $pendingQuery->get() : collect([]);
         
-        // For received orders, only limit if no search filters are applied
         if ($status == 'all' || $status == 'received') {
             $shippedOrders = ($search || $supplier_id || $warehouse_id || $date_from || $date_to) 
                 ? $receivedQuery->get() 
@@ -133,7 +128,7 @@ class PurchaseController extends Controller
             $shippedOrders = collect([]);
         }
         
-        // Get suppliers and warehouses for dropdowns
+        // Get suppliers dan warehouses  dropdowns
         $suppliers = \App\Models\Suppliers::orderBy('company_name')->get();
         $warehouses = \App\Models\Warehouse::orderBy('name')->get();
         
@@ -157,7 +152,6 @@ class PurchaseController extends Controller
      */
     public function shipDetail($id)
     {
-        // Load the sale with its related data
         $purchase = purchase::with(['supplier', 'paymentMethod','warehouse', 'purchaseDetails.product'])->findOrFail($id);
         
         return view('purchase.ship-detail', compact('purchase'));
@@ -172,10 +166,8 @@ class PurchaseController extends Controller
 
      public function createReceiving(Request $request)
      {
-         // Log request data for debugging
          \Log::info('Receiving Request Data:', $request->all());
          
-         // Validation with composite key approach
          $validatedData = $request->validate([
              'product_id' => 'required|exists:product,id',
              'purchase_id' => 'required|exists:purchase,id',
@@ -184,13 +176,13 @@ class PurchaseController extends Controller
              'quantity_received' => 'required|integer|min:1',
          ]);
      
-         // Get the product and purchase
+         // Get product and purchase
          $product = Product::find($validatedData['product_id']);
          $purchase = Purchase::find($validatedData['purchase_id']);
          
          // Get warehouse_id from purchase table
          $warehouseId = $purchase->warehouse_id;
-         $isDirectlyInStore = !$warehouseId; // If warehouse_id is null/0, it's "Directly In Store"
+         $isDirectlyInStore = !$warehouseId; // If warehouse_id is null/0, "Directly In Store"
          
          // If not "Directly In Store", check if the warehouse exists
          if (!$isDirectlyInStore) {
@@ -202,7 +194,6 @@ class PurchaseController extends Controller
              }
          }
      
-         // Get purchase detail using composite key
          $purchaseDetail = DB::table('purchase_detail')
              ->where('product_id', $validatedData['detail_product_id'])
              ->where('purchase_id', $validatedData['detail_purchase_id'])
@@ -212,10 +203,10 @@ class PurchaseController extends Controller
              return redirect()->back()->with('error', 'Purchase detail not found');
          }
          
-         // Get total order quantity for this detail
+         // Get total order quantity
          $totalOrderQuantity = $purchaseDetail->quantity;
          
-         // Calculate quantity already received for this detail
+         // Calculate quantity already received 
          $receivedQuantity = DB::table('receive_history')
              ->where('product_id', $validatedData['detail_product_id'])
              ->where('purchase_id', $validatedData['detail_purchase_id'])
@@ -237,7 +228,6 @@ class PurchaseController extends Controller
              
              // Only update product_has_warehouse if NOT "Directly In Store"
              if (!$isDirectlyInStore) {
-                 // Update or insert stock in product_has_warehouse table
                  $existingWarehouseStock = DB::table('product_has_warehouse')
                      ->where('product_id', $product->id)
                      ->where('warehouse_id', $warehouseId)
@@ -261,7 +251,6 @@ class PurchaseController extends Controller
                  }
              }
              
-             // Get COGS method directly from purchase table
              $cogsMethod = strtolower($purchase->cogs_method ?? 'average'); // Default to average
              
              // Check if COGS method is FIFO
@@ -303,7 +292,6 @@ class PurchaseController extends Controller
                      $fifoData[$priceColumnName] = $purchaseDetail->subtotal_price / $purchaseDetail->quantity;
                  }
                  
-                 // Add created_at and updated_at if they exist in product_fifo
                  if (in_array('created_at', $productFifoColumns)) {
                      $fifoData['created_at'] = now();
                  }
@@ -339,7 +327,7 @@ class PurchaseController extends Controller
              // Check if warehouse_id column exists in receive_history
              $receiveHistoryColumns = DB::getSchemaBuilder()->getColumnListing('receive_history');
              if (!in_array('warehouse_id', $receiveHistoryColumns)) {
-                 // Remove warehouse_id if column doesn't exist
+                 // Remove warehouse_id if column doesn't exist (artinya purchase menggunakan directly in store)
                  unset($receiveData['warehouse_id']);
              }
              
@@ -353,7 +341,6 @@ class PurchaseController extends Controller
              foreach ($purchaseDetails as $detail) {
                  $detailTotal = $detail->quantity;
                  
-                 // Use composite key to check receiving history
                  $detailReceived = DB::table('receive_history')
                      ->where('product_id', $detail->product_id)
                      ->where('purchase_id', $detail->purchase_id)
@@ -367,7 +354,6 @@ class PurchaseController extends Controller
              
              // If all items received, update receive_date in purchase
              if ($allDetailsFulfilledForThisPurchase) {
-                 // Update purchase receive_date using query builder to avoid updated_at
                  DB::table('purchase')
                      ->where('id', $purchase->id)
                      ->update(['receive_date' => now()]);
@@ -444,11 +430,10 @@ class PurchaseController extends Controller
 
     public function detail($id)
     {
-        // Fetch the sale with its details
         $purchase = purchase::with(['supplier', 'paymentMethod', 'purchaseDetails.product']) // Eager load related data
-            ->findOrFail($id); // Fetch the sale or fail if not found
+            ->findOrFail($id); 
 
-        // Debugging: Check if supplier is null
+        // Check if supplier is null
         if (is_null($purchase->supplier)) {
             Log::info("Supplier is null for purchase ID: " . $id);
         }
@@ -457,12 +442,10 @@ class PurchaseController extends Controller
 
     public function dataKonfigurasi()
     {
-        // Ambil semua discount yang belum aktif dari detailkonfigurasi
         $shippings = DB::table('detailkonfigurasi')->where('konfigurasi_id', 4)->get();
         $payments = DB::table('detailkonfigurasi')->where('konfigurasi_id', 5)->get();
         $cogs = DB::table('detailkonfigurasi')->where('konfigurasi_id', 7)->get();
 
-        // Debugging line to check discounts
         // dd($discounts);
 
         return view('purchase.konfigurasi', compact('shippings', 'payments', 'cogs'));
@@ -542,19 +525,19 @@ class PurchaseController extends Controller
                         ->where('id', $cogs_method->id)
                         ->update(['statusActive' => 1]);
                 } elseif (in_array($cogs_method->id, $checkedCogs)) {
-                    // Jika pengiriman dipilih, aktifkan
+                    // Jika cogs dipilih, aktifkan
                     DB::table('detailkonfigurasi')
                         ->where('id', $cogs_method->id)
                         ->update(['statusActive' => 1]);
                 } else {
-                    // Jika pengiriman tidak dipilih, reset status menjadi 0
+                    // Jika cogs tidak dipilih, reset status menjadi 0
                     DB::table('detailkonfigurasi')
                         ->where('id', $cogs_method->id)
                         ->update(['statusActive' => 0]);
                 }
             }
         } else {
-            // Jika tidak ada pengiriman yang dipilih, reset semua status menjadi 0
+            // Jika tidak ada cogs yang dipilih, reset semua status menjadi 0
             DB::table('detailkonfigurasi')->where('konfigurasi_id', 7)
                 ->where('types', '!=', 'mandatory') // Hanya reset yang bukan mandatory
                 ->update(['statusActive' => 0]);
@@ -578,19 +561,16 @@ class PurchaseController extends Controller
     public function store(Request $request)
     {
         try {
-            // Add debugging
             \Log::info('Shipping ID from request: ' . $request->shipping_id);
             
             $selectedShippingMethod = detailKonfigurasi::where('name', 'The product is shipped by the supplier')->first();
             
-            // Add debugging
             \Log::info('Selected shipping method:', [
                 'method' => $selectedShippingMethod ? $selectedShippingMethod->toArray() : null
             ]);
             
             $isSupplierShipping = $selectedShippingMethod && $selectedShippingMethod->value == $request->shipping_id;
             
-            // Add debugging
             \Log::info('Is supplier shipping: ' . ($isSupplierShipping ? 'true' : 'false'));
 
     
@@ -617,7 +597,7 @@ class PurchaseController extends Controller
     
             $products = json_decode($request->input('products'), true);
             
-            // Group by product_id to handle any potential duplicates that might still occur
+            // Group by product_id to handle any potential duplicates that might still happend
             $groupedProducts = [];
             foreach ($products as $product) {
                 $productId = $product['product_id'];

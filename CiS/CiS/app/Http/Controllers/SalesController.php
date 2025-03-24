@@ -499,7 +499,7 @@ class SalesController extends Controller
         $customers = Customer::all();
         $paymentMethods = Payment_Methods::all();
         $products = Product::all();
-        $employees = Employe::all(); // Fetch employees
+        $employees = Employe::all();
 
         $activeDiscounts = DB::table('detailkonfigurasi')
             ->where('konfigurasi_id', 1)
@@ -511,11 +511,10 @@ class SalesController extends Controller
             ->where('statusActive', 1)
             ->get();
 
-        // Fetch active payment configurations
         $activePayments = DB::table('detailkonfigurasi')
             ->where('konfigurasi_id', 3)
             ->where('statusActive', 1)
-            ->get(); // Get only the IDs of active payments
+            ->get();
 
         $activeCogs = DB::table('detailkonfigurasi')
             ->where('konfigurasi_id', 8)
@@ -524,10 +523,8 @@ class SalesController extends Controller
 
         $user = Auth::user();
     
-        // Find the corresponding employee ID
         $employeId = Employe::where('users_id', $user->id)->value('id');
         
-        // Pass the payment methods to the view
         return view('sales.create', compact('newNumber', 'customers', 'paymentMethods', 'products', 'employees', 'activeDiscounts', 'activeShippings', 'activePayments', 'activeCogs', 'employeId'));
 
     }
@@ -537,8 +534,7 @@ class SalesController extends Controller
         // Fetch all customers
         $customers = Customer::all();
 
-        // Fetch sales data to use for autofilling invoice and purchase date
-        $sales = Sales::with('customer')->get(); // Assuming you have a Sale model
+        $sales = Sales::with('customer')->get();
 
         // Fetch sales details to get products that can be returned
         $salesDetails = Sales_detail::with(['product', 'sales.customer'])->get();
@@ -549,21 +545,20 @@ class SalesController extends Controller
             $salesByCustomer[$sale->customers_id][] = $sale;
         }
 
-        // Prepare an array to hold products for each sale
+        // array to hold products for each sale
         $productsBySale = [];
         foreach ($salesDetails as $detail) {
             if (!isset($productsBySale[$detail->sales_id])) {
                 $productsBySale[$detail->sales_id] = [];
             }
-            // Include total_quantity in the product details
+
             $productsBySale[$detail->sales_id][] = [
                 'product_id' => $detail->product_id,
-                'product' => $detail->product, // Assuming this includes the product name
+                'product' => $detail->product, 
                 'total_quantity' => $detail->total_quantity // Fetch total_quantity from sales_detail
             ];
         }
 
-        // Pass the sales details, customers, and products by sale to the view
         return view('sales.retur', compact('salesDetails', 'customers', 'salesByCustomer', 'productsBySale'));
     }
 
@@ -574,7 +569,6 @@ class SalesController extends Controller
 
     public function detail($id)
     {
-        // Fetch the sale with its details
         $sale = Sales::with(['customer', 'paymentMethod', 'salesDetail.product']) // Eager load related data
             ->findOrFail($id); // Fetch the sale or fail if not found
 
@@ -583,13 +577,11 @@ class SalesController extends Controller
 
     public function dataKonfigurasi()
     {
-        // Ambil semua discount yang belum aktif dari detailkonfigurasi
         $discounts = DB::table('detailkonfigurasi')->where('konfigurasi_id', 1)->get();
         $shippings = DB::table('detailkonfigurasi')->where('konfigurasi_id', 2)->get();
         $payments = DB::table('detailkonfigurasi')->where('konfigurasi_id', 3)->get();
         $cogs = DB::table('detailkonfigurasi')->where('konfigurasi_id', 8)->get();
 
-        // Debugging line to check discounts
         // dd($discounts);
 
         return view('sales.konfigurasi', compact('discounts', 'shippings', 'payments', 'cogs'));
@@ -601,7 +593,7 @@ class SalesController extends Controller
         if ($request->has('discounts')) {
             $allDiscounts = DB::table('detailkonfigurasi')->where('konfigurasi_id', 1)->get();
     
-            // If discounts are selected, update their status
+            // update status
             foreach ($allDiscounts as $discount) {
                 if ($request->has('discounts') && in_array($discount->id, $request->input('discounts', []))) {
                     DB::table('detailkonfigurasi')
@@ -614,7 +606,6 @@ class SalesController extends Controller
                 }
             }
         } else {
-            // Jika tidak ada pembayaran yang dipilih, reset semua status menjadi 0
             DB::table('detailkonfigurasi')->where('konfigurasi_id', 1)
                 ->where('types', '!=', 'mandatory') // Hanya reset yang bukan mandatory
                 ->update(['statusActive' => 0]);
@@ -640,7 +631,6 @@ class SalesController extends Controller
                 }
             }
         } else {
-            // Jika tidak ada pembayaran yang dipilih, reset semua status menjadi 0
             DB::table('detailkonfigurasi')->where('konfigurasi_id', 2)
                 ->where('types', '!=', 'mandatory') // Hanya reset yang bukan mandatory
                 ->update(['statusActive' => 0]);
@@ -685,12 +675,12 @@ class SalesController extends Controller
                         ->where('id', $cogs_method->id)
                         ->update(['statusActive' => 1]);
                 } elseif (in_array($cogs_method->id, $checkedCogs)) {
-                    // Jika pengiriman dipilih, aktifkan
+                    // Jika cogs dipilih, aktifkan
                     DB::table('detailkonfigurasi')
                         ->where('id', $cogs_method->id)
                         ->update(['statusActive' => 1]);
                 } else {
-                    // Jika pengiriman tidak dipilih, reset status menjadi 0
+                    // Jika cogs tidak dipilih, reset status menjadi 0
                     DB::table('detailkonfigurasi')
                         ->where('id', $cogs_method->id)
                         ->update(['statusActive' => 0]);
@@ -773,7 +763,6 @@ class SalesController extends Controller
             DB::beginTransaction();
 
             try {
-                // Map COGS method ID to name (based on your form values)
                 $cogsMethodMap = [
                     '18' => 'fifo',
                     '19' => 'average'
@@ -781,7 +770,6 @@ class SalesController extends Controller
 
                 $cogsMethod = $cogsMethodMap[$request->input('cogs_method')] ?? null;
 
-                // Validate that the COGS method is valid
                 if (!$cogsMethod) {
                     throw new \Exception('Invalid COGS method selected');
                 }
@@ -812,7 +800,7 @@ class SalesController extends Controller
                     throw new \Exception('No products provided for the sale');
                 }
 
-                // Insert sales details and collect product data for inventory update
+                // Insert sales details 
                 $productsForInventory = [];
                 foreach ($products as $product) {
                     $quantity = max(1, intval($product['quantity']));
@@ -840,7 +828,7 @@ class SalesController extends Controller
 
                 // Update inventory only if the shipping method is NOT the delivery service
                 if (!$isDeliveryService) {
-                    // Update inventory using the model's updateInventory method
+                    // Update inventory using the model updateInventory method
                     $sale->updateInventory($cogsMethod, $productsForInventory);
                 }
 
