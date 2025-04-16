@@ -15,22 +15,37 @@
                             <input class="form-check-input me-2" type="checkbox" name="discounts[]"
                                 value="{{ $discount->id }}" id="discount_{{ $discount->id }}"
                                 {{ $discount->statusActive ? 'checked' : '' }}
+                                {{ $discount->types === 'mandatory' ? 'disabled' : '' }}
                                 data-original-state="{{ $discount->statusActive ? '1' : '0' }}" data-config-type="discount"
                                 data-config-name="{{ $discount->name }}" onclick="trackConfigChange(this)">
                             <label class="form-check-label me-2" for="discount_{{ $discount->id }}">
                                 {{ $discount->name }}
                             </label>
-                            <input type="number" name="discount_values[{{ $discount->id }}]" class="form-control w-25"
-                                value="{{ $discount->value }}">
+                            <div class="input-group w-25">
+                                <input type="number" name="discount_values[{{ $discount->id }}]" class="form-control"
+                                    value="{{ $discount->value }}">
+                                <span class="input-group-text">%</span>
+                            </div>
 
                             {{-- Add minimum value input for specific discount types --}}
-                            @if (
-                                $discount->name === 'Minimum purchase discount' ||
-                                    $discount->name === 'Discount on the number of product purchases')
+                            @if ($discount->name === 'Minimum purchase discount')
                                 <div class="ms-3 d-flex align-items-center">
                                     <label class="me-2">Min value:</label>
-                                    <input type="number" name="discount_min_values[{{ $discount->id }}]"
-                                        class="form-control w-26" value="{{ $discount->min_value }}">
+                                    <div class="input-group w-100">
+                                        <span class="input-group-text">IDR</span>
+                                        <input type="number" name="discount_min_values[{{ $discount->id }}]"
+                                            class="form-control" value="{{ $discount->min_value }}">
+                                    </div>
+                                </div>
+                            @endif
+                            @if ($discount->name === 'Discount on the number of product purchases')
+                                <div class="ms-3 d-flex align-items-center">
+                                    <label class="me-2">Min value:</label>
+                                    <div class="input-group w-100">
+                                        <span class="input-group-text">NUM</span>
+                                        <input type="number" name="discount_min_values[{{ $discount->id }}]"
+                                            class="form-control" value="{{ $discount->min_value }}">
+                                    </div>
                                 </div>
                             @endif
                         </div>
@@ -51,13 +66,17 @@
                             <input class="form-check-input me-2" type="checkbox" name="shippings[]"
                                 value="{{ $shipping->id }}" id="shipping_{{ $shipping->id }}"
                                 {{ $shipping->statusActive ? 'checked' : '' }}
+                                {{ $shipping->types === 'mandatory' ? 'disabled' : '' }}
                                 data-original-state="{{ $shipping->statusActive ? '1' : '0' }}" data-config-type="shipping"
                                 data-config-name="{{ $shipping->name }}" onclick="trackConfigChange(this)">
                             <label class="form-check-label me-2" for="shipping_{{ $shipping->id }}">
                                 {{ $shipping->name }}
                             </label>
-                            <input type="number" name="shipping_values[{{ $shipping->id }}]" class="form-control w-25"
-                                value="{{ $shipping->value }}">
+                            <div class="input-group w-25">
+                                <span class="input-group-text">IDR</span>
+                                <input type="number" name="shipping_values[{{ $shipping->id }}]" class="form-control"
+                                    value="{{ $shipping->value }}">
+                            </div>
                         </div>
                         <div>
                             <small class="text-muted">{{ $shipping->desc }}</small>
@@ -76,6 +95,7 @@
                             <input class="form-check-input me-2" type="checkbox" name="payments[]"
                                 value="{{ $payment->id }}" id="payment_{{ $payment->id }}"
                                 {{ $payment->statusActive ? 'checked' : '' }}
+                                {{ $payment->types === 'mandatory' ? 'disabled' : '' }}
                                 data-original-state="{{ $payment->statusActive ? '1' : '0' }}"
                                 data-config-type="payment method" data-config-name="{{ $payment->name }}"
                                 onclick="trackConfigChange(this)">
@@ -100,6 +120,7 @@
                             <input class="form-check-input me-2" type="checkbox" name="cogs[]"
                                 value="{{ $cogs_method->id }}" id="cogs_{{ $cogs_method->id }}"
                                 {{ $cogs_method->statusActive ? 'checked' : '' }}
+                                {{ $cogs_method->types === 'mandatory' ? 'disabled' : '' }}
                                 data-original-state="{{ $cogs_method->statusActive ? '1' : '0' }}" data-config-type="COGS"
                                 data-config-name="{{ $cogs_method->name }}" onclick="trackConfigChange(this)">
                             <label class="form-check-label me-2" for="cogs_{{ $cogs_method->id }}">

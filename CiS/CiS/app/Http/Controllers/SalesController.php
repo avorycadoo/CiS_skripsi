@@ -189,7 +189,7 @@ class SalesController extends Controller
             'shipping_address' => 'nullable|string',
             'recipients_name' => 'nullable|string',
         ]);
-    
+        dd($validatedData);
         // Get product and sale
         $product = Product::find($validatedData['product_id']);
         $sale = Sales::find($validatedData['sale_id']);

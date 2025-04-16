@@ -16,7 +16,8 @@
                                     {{ in_array($warehouse->id, old('warehouses', [])) || $warehouse->statusActive == 1 ? 'checked' : '' }}
                                     data-original-state="{{ $warehouse->statusActive == 1 ? '1' : '0' }}"
                                     data-config-type="warehouse" data-config-name="{{ $warehouse->name }}"
-                                    onclick="trackConfigChange(this)">
+                                    onclick="trackConfigChange(this)"
+                                    {{ $warehouse->types === 'mandatory' ? 'disabled' : '' }}>
                                 <label class="form-check-label" for="warehouse{{ $warehouse->id }}">
                                     {{ $warehouse->name }}
                                 </label>

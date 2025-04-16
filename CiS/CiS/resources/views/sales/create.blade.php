@@ -278,6 +278,38 @@
             const cardNumberContainer = document.getElementById('card_number_container');
             const cardNumberInput = document.getElementById('card_number');
 
+            // Function to handle discount selection and disabling
+            function manageDiscountOptions(selectedRadio = null) {
+                const discountRadios = document.querySelectorAll('.discount-radio');
+
+                if (selectedRadio) {
+                    // Disable all other discount options
+                    discountRadios.forEach(radio => {
+                        if (radio !== selectedRadio) {
+                            radio.disabled = true;
+                            // Also add a visual indication
+                            radio.closest('.form-check').classList.add('text-muted');
+                        }
+                    });
+
+                    // Show reset button if it exists
+                    if (document.getElementById('resetDiscountBtn')) {
+                        document.getElementById('resetDiscountBtn').style.display = 'inline-block';
+                    }
+                } else {
+                    // Enable all discount options
+                    discountRadios.forEach(radio => {
+                        radio.disabled = false;
+                        radio.closest('.form-check').classList.remove('text-muted');
+                    });
+
+                    // Hide reset button if it exists
+                    if (document.getElementById('resetDiscountBtn')) {
+                        document.getElementById('resetDiscountBtn').style.display = 'none';
+                    }
+                }
+            }
+
             // Function to toggle the credit card number field
             function toggleCardNumberField() {
                 // Check for the exact payment method "S-Credit Card"
@@ -314,6 +346,51 @@
                         this.value = this.value.slice(0, 16);
                     }
                 });
+            }
+
+            // Create and add reset button for discounts if it doesn't exist
+            const discountHeader = document.querySelector(
+                '.card-header[data-bs-toggle="collapse"][data-bs-target="#discountCollapse"]');
+            if (discountHeader && !document.getElementById('resetDiscountBtn')) {
+                // Check if it's not already a flex container
+                if (!discountHeader.classList.contains('d-flex')) {
+                    discountHeader.classList.add('d-flex', 'justify-content-between', 'align-items-center');
+
+                    // Make sure the title is in its own container
+                    const titleElement = discountHeader.querySelector('h5');
+                    if (titleElement && titleElement.parentNode === discountHeader) {
+                        titleElement.classList.add('mb-0');
+                    }
+                }
+
+                const resetButton = document.createElement('button');
+                resetButton.type = 'button';
+                resetButton.id = 'resetDiscountBtn';
+                resetButton.className = 'btn btn-sm btn-outline-secondary';
+                resetButton.innerHTML = 'Reset Selection';
+                resetButton.style.display = 'none'; // Initially hidden
+
+                resetButton.addEventListener('click', function(e) {
+                    e.stopPropagation(); // Prevent toggling the collapse
+
+                    // Uncheck all discount radios
+                    document.querySelectorAll('.discount-radio').forEach(radio => {
+                        radio.checked = false;
+                    });
+
+                    // Hide all discount value inputs
+                    document.querySelectorAll('.discount-value-input').forEach(input => {
+                        input.style.display = 'none';
+                    });
+
+                    // Re-enable all discount options
+                    manageDiscountOptions();
+
+                    // Update prices
+                    updateTotalPrice();
+                });
+
+                discountHeader.appendChild(resetButton);
             }
 
             // Call updateTotalPrice on page load to ensure initial calculation
@@ -358,18 +435,19 @@
 
                 // Format with thousand separators
                 row.innerHTML = `
-                    <td>${productName}</td>
-                    <td>Rp ${formatIDR(price.toFixed(0))}</td>
-                    <td>${quantity}</td>
-                    <td>Rp ${formatIDR(amount.toFixed(0))}</td>
-                    <td><button type="button" class="btn btn-danger btn-sm remove-product">Remove</button></td>
-                `;
+                <td>${productName}</td>
+                <td>Rp ${formatIDR(price.toFixed(0))}</td>
+                <td>${quantity}</td>
+                <td>Rp ${formatIDR(amount.toFixed(0))}</td>
+                <td><button type="button" class="btn btn-danger btn-sm remove-product">Remove</button></td>
+            `;
 
                 tableBody.appendChild(row);
 
                 // Add the product to the products array
                 products.push({
                     product_id: productSelect.value,
+                    product_name: productName,
                     quantity: quantity,
                     price: price
                 });
@@ -427,6 +505,12 @@
                                 });
                             }
                         }
+
+                        // Disable other discount options when this one is selected
+                        manageDiscountOptions(this);
+                    } else {
+                        // If unchecked, re-enable all options
+                        manageDiscountOptions();
                     }
                     updateTotalPrice();
                 });
@@ -468,12 +552,29 @@
                 let totalQuantity = 0;
                 let hasProducts = false;
 
+                // Track quantity per product for volume discount
+                const productQuantities = {};
+                let maxSingleProductQuantity = 0;
+
                 rows.forEach(row => {
                     // Get the amount text, remove "Rp " prefix and thousand separators
                     const amountText = row.children[3].textContent.replace('Rp ', '').replace(/\./g, '')
                         .replace(/,/g, '');
                     const amount = parseFloat(amountText) || 0;
                     const quantity = parseInt(row.children[2].textContent) || 0;
+                    const productName = row.children[0].textContent;
+
+                    // Track quantities per product
+                    if (!productQuantities[productName]) {
+                        productQuantities[productName] = 0;
+                    }
+                    productQuantities[productName] += quantity;
+
+                    // Update max single product quantity
+                    if (productQuantities[productName] > maxSingleProductQuantity) {
+                        maxSingleProductQuantity = productQuantities[productName];
+                    }
+
                     totalPrice += amount;
                     totalQuantity += quantity;
                     if (quantity >= 1) hasProducts = true;
@@ -489,52 +590,84 @@
                 let discountAmount = 0;
                 let shippingValue = 0;
 
-                // Only process discounts if there are any discount radios available
+                // Check if any discount is already manually selected
+                const manuallySelectedDiscount = document.querySelector('.discount-radio:checked:not(:disabled)');
+
+                // Only process automatic discount selection if there are discount radios available
+                // and no discount is manually selected
                 const discountRadios = document.querySelectorAll('.discount-radio');
                 if (discountRadios.length > 0) {
-                    let perProductDiscount = document.querySelector('input[data-name="Discount product"]');
-                    let minimumPurchaseRadio = document.querySelector(
-                        'input[data-name="Minimum purchase discount"]');
-                    let volumeDiscountRadio = document.querySelector(
-                        'input[data-name="Discount on the number of product purchases"]');
+                    // If no manual selection, apply automatic selection
+                    if (!manuallySelectedDiscount) {
+                        // Reset discount options state
+                        manageDiscountOptions();
 
-                    // Get minimum values from data attributes
-                    const minPurchaseAmount = parseFloat(minimumPurchaseRadio ? minimumPurchaseRadio.getAttribute(
-                        'data-min-value') : 2000000);
-                    const minProductQuantity = parseInt(volumeDiscountRadio ? volumeDiscountRadio.getAttribute(
-                        'data-min-value') : 20);
+                        let perProductDiscount = document.querySelector('input[data-name="Discount product"]');
+                        let minimumPurchaseRadio = document.querySelector(
+                            'input[data-name="Minimum purchase discount"]');
+                        let volumeDiscountRadio = document.querySelector(
+                            'input[data-name="Discount on the number of product purchases"]');
 
-                    // Reset all radios
-                    discountRadios.forEach(radio => {
-                        radio.checked = false;
-                        const valueInput = radio.closest('.form-check').querySelector(
-                            '.discount-value-input');
-                        if (valueInput) {
-                            valueInput.style.display = 'none';
-                        }
-                    });
+                        // Get minimum values from data attributes
+                        const minPurchaseAmount = parseFloat(minimumPurchaseRadio ? minimumPurchaseRadio
+                            .getAttribute(
+                                'data-min-value') : 1000000);
+                        const minProductQuantity = parseInt(volumeDiscountRadio ? volumeDiscountRadio.getAttribute(
+                            'data-min-value') : 15);
 
-                    // Check conditions and apply highest applicable discount
-                    if (totalQuantity >= minProductQuantity && volumeDiscountRadio) {
-                        volumeDiscountRadio.checked = true;
-                        const valueInput = volumeDiscountRadio.closest('.form-check').querySelector(
-                            '.discount-value-input');
-                        if (valueInput) {
-                            valueInput.style.display = 'block';
+                        // Reset all radios
+                        discountRadios.forEach(radio => {
+                            radio.checked = false;
+                            const valueInput = radio.closest('.form-check').querySelector(
+                                '.discount-value-input');
+                            if (valueInput) {
+                                valueInput.style.display = 'none';
+                            }
+                        });
+
+                        console.log('Discount eligibility check:', {
+                            totalPrice: totalPrice,
+                            minPurchaseAmount: minPurchaseAmount,
+                            totalQuantity: totalQuantity,
+                            maxSingleProductQuantity: maxSingleProductQuantity,
+                            minProductQuantity: minProductQuantity,
+                            'Price meets minimum?': totalPrice >= minPurchaseAmount,
+                            'Any single product meets minimum quantity?': maxSingleProductQuantity >=
+                                minProductQuantity,
+                            'Product quantities': productQuantities
+                        });
+
+                        // Check conditions and apply highest applicable discount
+                        let selectedRadio = null;
+
+                        // NEW CONDITION: Check for volume discount based on both quantity AND minimum purchase amount
+                        if (maxSingleProductQuantity >= minProductQuantity &&
+                            totalPrice >= minPurchaseAmount &&
+                            volumeDiscountRadio) {
+                            volumeDiscountRadio.checked = true;
+                            selectedRadio = volumeDiscountRadio;
                         }
-                    } else if (totalPrice >= minPurchaseAmount && minimumPurchaseRadio) {
-                        minimumPurchaseRadio.checked = true;
-                        const valueInput = minimumPurchaseRadio.closest('.form-check').querySelector(
-                            '.discount-value-input');
-                        if (valueInput) {
-                            valueInput.style.display = 'block';
+                        // Check if the minimum purchase threshold is met
+                        else if (totalPrice >= minPurchaseAmount && minimumPurchaseRadio) {
+                            minimumPurchaseRadio.checked = true;
+                            selectedRadio = minimumPurchaseRadio;
                         }
-                    } else if (hasProducts && perProductDiscount) {
-                        perProductDiscount.checked = true;
-                        const valueInput = perProductDiscount.closest('.form-check').querySelector(
-                            '.discount-value-input');
-                        if (valueInput) {
-                            valueInput.style.display = 'block';
+                        // Check if there are any products for the basic product discount
+                        else if (hasProducts && perProductDiscount) {
+                            perProductDiscount.checked = true;
+                            selectedRadio = perProductDiscount;
+                        }
+
+                        // If a discount was automatically selected, show its input and disable others
+                        if (selectedRadio) {
+                            const valueInput = selectedRadio.closest('.form-check').querySelector(
+                                '.discount-value-input');
+                            if (valueInput) {
+                                valueInput.style.display = 'block';
+                            }
+
+                            // Disable other options
+                            manageDiscountOptions(selectedRadio);
                         }
                     }
 

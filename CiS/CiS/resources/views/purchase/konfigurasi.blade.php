@@ -23,8 +23,11 @@
                                 <label class="form-check-label me-2" for="shipping{{ $shipping->id }}">
                                     {{ $shipping->name }}
                                 </label>
-                                <input type="number" name="shipping_values[{{ $shipping->id }}]" 
-                                    class="form-control w-25" value="{{ $shipping->value }}">
+                                <div class="input-group w-25">
+                                    <span class="input-group-text">IDR</span>
+                                    <input type="number" name="shipping_values[{{ $shipping->id }}]" 
+                                        class="form-control" value="{{ $shipping->value }}">
+                                </div>
                             </div>
                             <div>
                                 <small class="text-muted">{{ $shipping->desc }}</small>
@@ -98,7 +101,7 @@
     <div id="customModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 1000; overflow: auto;">
         <div style="background-color: white; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 50%; border-radius: 5px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h4 style="margin: 0;">Konfirmasi</h4>
+                <h4 style="margin: 0;">Confirmation</h4>
                 <span onclick="hideConfirmation()" style="cursor: pointer; font-size: 20px; font-weight: bold;">&times;</span>
             </div>
             <div id="modalContent" style="margin-bottom: 20px;">
